@@ -329,6 +329,47 @@ python scripts/train.py --data data/creditcard.csv --out artifacts --label Class
 
 The resulting `metadata.json` records the split contract and stores expected SHA-256 checksums for readiness validation.
 
+### Local experiment tracking
+
+Install both `requirements.txt` and `requirements-dev.txt` as shown above. Training tracks
+one MLflow run in the `fraud-risk-training` experiment by default; no tracking server is
+required. Run these commands from the repository root:
+
+```bash
+python scripts/train.py --data data/creditcard.csv --out artifacts --label Class
+mlflow ui --backend-store-uri sqlite:///mlflow.db --host 127.0.0.1 --port 5000
+```
+
+Open `http://127.0.0.1:5000`. Run metadata lives in `mlflow.db` (SQLite), and logged
+artifact copies live in `mlruns/`, relative to the working directory. Both are ignored
+by Git and Docker. Existing files in `--out` retain their names, schemas, and serialization.
+
+Each run records the seed, split fractions/counts, costs, label, feature count, dataset
+basename and SHA-256 (no raw dataset or full dataset path), and estimator parameters under
+`rf.*` and `xgb.*`. Metrics use `rf.calibration.*`, `rf.holdout_test.*`,
+`xgb.calibration.*`, and `xgb.holdout_test.*`: threshold, precision, recall, F1,
+ROC AUC when defined, review rate, total/average cost, and TP/FP/TN/FN. Calibration
+metrics describe threshold selection; only holdout metrics report final performance.
+After all release files are written, the run logs `thresholds.json`, `policy.json`,
+`metadata.json`, and the four `.joblib` files under `release/`.
+
+Use `--no-tracking` to train without MLflow, `--experiment-name NAME` to group runs
+separately, or `--tracking-uri URI` to override the store. The URI flag takes precedence
+over `MLFLOW_TRACKING_URI`, which takes precedence over `sqlite:///mlflow.db`.
+For example, in PowerShell:
+
+```powershell
+$env:MLFLOW_TRACKING_URI = "sqlite:///another-experiment.db"
+python scripts/train.py --data data/creditcard.csv --out artifacts
+mlflow ui --backend-store-uri $env:MLFLOW_TRACKING_URI --host 127.0.0.1 --port 5000
+```
+
+A future server can be selected with the same URI setting; this setup provisions no
+remote infrastructure. Tracking errors propagate, so a run with incomplete logging is
+not reported as successful. Files already written to `--out` remain available if logging
+fails. Keep the dataset and code revision alongside the recorded configuration to reproduce
+a run; tracking does not snapshot the dataset or source tree.
+
 ---
 
 ## 📦 Data

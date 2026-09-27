@@ -15,3 +15,7 @@ coverage.xml
 *.pyo
 .env
 .env.*
+mlruns
+mlflow.db
+mlflow.db-*
+mlruns/
