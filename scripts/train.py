@@ -152,8 +152,11 @@ def train(
     tracking_enabled: bool = True,
     tracking_uri: str | None = None,
     experiment_name: str = "fraud-risk-training",
+    register_models: bool = False,
 ) -> None:
     """Train with optional, explicit tracking; keep release artifacts independent."""
+    if register_models and not tracking_enabled:
+        raise ValueError("--register-models requires tracking; remove --no-tracking.")
     with ExitStack() as stack:
         tracking = None
         if tracking_enabled:
@@ -162,6 +165,10 @@ def train(
             mlflow.set_tracking_uri(
                 tracking_uri or os.environ.get("MLFLOW_TRACKING_URI") or "sqlite:///mlflow.db"
             )
+            if register_models:
+                registry_uri = mlflow.get_registry_uri()
+                stack.callback(mlflow.set_registry_uri, registry_uri)
+                mlflow.set_registry_uri(mlflow.get_tracking_uri())
             experiment = mlflow.set_experiment(experiment_name)
             stack.enter_context(mlflow.start_run(experiment_id=experiment.experiment_id))
             tracking = mlflow
@@ -175,6 +182,7 @@ def train(
             cost_fp,
             cost_fn,
             tracking=tracking,
+            register_models=register_models,
         )
 
 
@@ -189,6 +197,7 @@ def _train(
     cost_fn: float,
     *,
     tracking: Any = None,
+    register_models: bool = False,
 ) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -402,6 +411,34 @@ def _train(
                 )
         for name in (*metadata["artifact_integrity"]["expected_sha256"], "metadata.json"):
             tracking.log_artifact(str(out_dir / name), artifact_path="release")
+        for family, estimator, evaluation in (
+            ("rf", rf_cal, rf_holdout_eval),
+            ("xgb", xgb_cal, xgb_holdout_eval),
+        ):
+            # Store the calibrated wrapper, including its probability interface.
+            # Infer the schema without persisting any training rows as input examples.
+            sample = X_train.iloc[:5]
+            info = tracking.sklearn.log_model(
+                estimator,
+                name=f"{family}_calibrated",
+                serialization_format="cloudpickle",
+                signature=tracking.models.infer_signature(sample, estimator.predict_proba(sample)),
+                pyfunc_predict_fn="predict_proba",
+            )
+            if register_models:
+                run = tracking.get_run(tracking.active_run().info.run_id)
+                tags = {
+                    "model_family": family,
+                    "run_id": run.info.run_id,
+                    "dataset_sha256": run.data.params["dataset_sha256"],
+                    "threshold": str(evaluation["threshold"]),
+                    **{
+                        f"holdout_{key}": str(evaluation[key])
+                        for key in ("f1", "roc_auc", "average_cost")
+                        if evaluation[key] is not None
+                    },
+                }
+                tracking.register_model(info.model_uri, f"fraud-risk-{family}", tags=tags)
 
 
 def parse_args() -> argparse.Namespace:
@@ -439,7 +476,15 @@ def parse_args() -> argparse.Namespace:
         help="MLflow tracking URI (default: MLFLOW_TRACKING_URI or sqlite:///mlflow.db).",
     )
     p.add_argument("--experiment-name", default="fraud-risk-training", help="MLflow experiment.")
-    return p.parse_args()
+    p.add_argument(
+        "--register-models",
+        action="store_true",
+        help="Create RF and XGB model versions in the tracking store; do not assign aliases.",
+    )
+    args = p.parse_args()
+    if args.register_models and args.no_tracking:
+        p.error("--register-models requires tracking; remove --no-tracking.")
+    return args
 
 
 def main() -> None:
@@ -456,6 +501,7 @@ def main() -> None:
         tracking_enabled=not args.no_tracking,
         tracking_uri=args.tracking_uri,
         experiment_name=args.experiment_name,
+        register_models=args.register_models,
     )
 
 

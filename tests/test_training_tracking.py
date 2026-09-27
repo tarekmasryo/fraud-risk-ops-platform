@@ -59,7 +59,10 @@ def _train_kwargs(tmp_path):
     }
 
 
-def test_real_tracking_preserves_training_and_artifact_contract(tmp_path, monkeypatch):
+@pytest.mark.parametrize("register_models", [False, True])
+def test_real_tracking_preserves_training_and_artifact_contract(
+    tmp_path, monkeypatch, register_models
+):
     monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("MLFLOW_TRACKING_URI", raising=False)
     monkeypatch.setattr(training, "datetime", _FixedDatetime)
@@ -68,6 +71,7 @@ def test_real_tracking_preserves_training_and_artifact_contract(tmp_path, monkey
     frame = pd.DataFrame({"V1": [0, 1] * 100, "Amount": [10.0, 20.0] * 100, "Class": [0, 1] * 100})
     frame.to_csv(kwargs["data_path"], index=False)
     original_uri = mlflow.get_tracking_uri()
+    uri = f"sqlite:///{(tmp_path / 'mlflow.db').as_posix()}"
     try:
         training.train(**kwargs, tracking_enabled=False)
         baseline = {name: (kwargs["out_dir"] / name).read_bytes() for name in RELEASE_FILES}
@@ -79,8 +83,13 @@ def test_real_tracking_preserves_training_and_artifact_contract(tmp_path, monkey
                 name: stack.enter_context(patch.object(mlflow, name, wraps=getattr(mlflow, name)))
                 for name in ("log_params", "log_metrics", "log_artifact")
             }
-            training.train(**kwargs)
-        client = MlflowClient(tracking_uri="sqlite:///mlflow.db")
+            training.train(**kwargs, tracking_uri=uri, register_models=register_models)
+        client = MlflowClient(tracking_uri=uri, registry_uri=uri)
+        registered = client.search_registered_models()
+        assert {model.name for model in registered} == (
+            {"fraud-risk-rf", "fraud-risk-xgb"} if register_models else set()
+        )
+        assert all(not model.aliases for model in registered)
         experiment = client.get_experiment_by_name("fraud-risk-training")
         runs = client.search_runs([experiment.experiment_id])
         assert len(runs) == 1
@@ -158,7 +167,7 @@ def test_disabled_tracking_does_not_import_mlflow(tmp_path, monkeypatch):
     work = MagicMock()
     monkeypatch.setattr(training, "_train", work)
     training.train(**_train_kwargs(tmp_path), tracking_enabled=False)
-    assert work.call_args.kwargs == {"tracking": None}
+    assert work.call_args.kwargs == {"tracking": None, "register_models": False}
 
 
 @pytest.mark.parametrize(
@@ -255,3 +264,4 @@ def test_cli_tracking_options(monkeypatch):
     assert work.call_args.kwargs["tracking_enabled"] is False
     assert work.call_args.kwargs["tracking_uri"] == "sqlite:///test.db"
     assert work.call_args.kwargs["experiment_name"] == "isolated"
+    assert work.call_args.kwargs["register_models"] is False
