@@ -370,6 +370,58 @@ not reported as successful. Files already written to `--out` remain available if
 fails. Keep the dataset and code revision alongside the recorded configuration to reproduce
 a run; tracking does not snapshot the dataset or source tree.
 
+### Local model registry and explicit promotion
+
+Tracked runs also log both calibrated estimators as MLflow `sklearn` models with input
+signatures and a `python_function` probability interface. No input examples or dataset
+rows are logged. Registration is **opt-in**; normal training creates no registered
+versions. Use the same local SQLite store, from the repository root:
+
+```bash
+python scripts/train.py --data data/creditcard.csv --out artifacts --register-models
+python scripts/model_registry.py --name fraud-risk-rf list
+python scripts/model_registry.py --name fraud-risk-rf aliases
+python scripts/model_registry.py --name fraud-risk-rf set-candidate --version 1
+python scripts/model_registry.py --name fraud-risk-rf promote
+python scripts/model_registry.py --name fraud-risk-rf champion
+python scripts/model_registry.py --name fraud-risk-rf smoke --input-csv data/features.csv
+```
+
+Each registration creates a new version under `fraud-risk-rf` and `fraud-risk-xgb`,
+tagged with model family, run ID, dataset SHA-256, holdout F1, ROC AUC when defined,
+average cost, and the calibration-selected threshold. Review these tags with `list`
+before choosing a candidate. Training assigns no aliases. Only `promote` assigns
+or reassigns `champion` to the current `candidate`; it never chooses a metric winner.
+Repeat `set-candidate` and `promote` with a previous version to roll back.
+
+Aliases are mutable references to immutable model versions. Moving `candidate` alone
+does not move `champion`, and moving `champion` affects subsequent loads, not models
+already loaded in memory. Both scripts use `--tracking-uri`, then `MLFLOW_TRACKING_URI`,
+then `sqlite:///mlflow.db`; registry operations use that same store, ignoring any
+separate `MLFLOW_REGISTRY_URI`. `--register-models` cannot be combined with `--no-tracking`.
+
+Load by alias directly, or use `smoke` with a compatible feature-only CSV (same feature
+names and numeric types as training, without the label):
+
+```python
+import mlflow
+import pandas as pd
+
+mlflow.set_tracking_uri("sqlite:///mlflow.db")
+mlflow.set_registry_uri("sqlite:///mlflow.db")
+model = mlflow.pyfunc.load_model("models:/fraud-risk-rf@champion")
+probabilities = model.predict(pd.read_csv("data/features.csv"))
+```
+
+The output contains calibrated probabilities in estimator class order (`[0, 1]`
+for the binary fraud models). It does not apply the tagged threshold or runtime
+decision policy. Filesystem artifacts and API/UI model loading remain unchanged;
+promotion does not deploy or replace those artifacts. Models use `cloudpickle` to
+preserve both calibrated wrappers, so load only trusted local model artifacts.
+Logging/registration failures propagate and may leave an earlier version from the
+same run registered; inspect the run status before promotion. This CLI is intended
+for a local operator, not concurrent promotion automation.
+
 ---
 
 ## 📦 Data
