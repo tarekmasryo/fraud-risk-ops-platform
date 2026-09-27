@@ -3,7 +3,9 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import platform
+from contextlib import ExitStack
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -146,6 +148,47 @@ def train(
     test_size: float,
     cost_fp: float,
     cost_fn: float,
+    *,
+    tracking_enabled: bool = True,
+    tracking_uri: str | None = None,
+    experiment_name: str = "fraud-risk-training",
+) -> None:
+    """Train with optional, explicit tracking; keep release artifacts independent."""
+    with ExitStack() as stack:
+        tracking = None
+        if tracking_enabled:
+            import mlflow
+
+            mlflow.set_tracking_uri(
+                tracking_uri or os.environ.get("MLFLOW_TRACKING_URI") or "sqlite:///mlflow.db"
+            )
+            experiment = mlflow.set_experiment(experiment_name)
+            stack.enter_context(mlflow.start_run(experiment_id=experiment.experiment_id))
+            tracking = mlflow
+        _train(
+            data_path,
+            out_dir,
+            label_col,
+            seed,
+            calibration_size,
+            test_size,
+            cost_fp,
+            cost_fn,
+            tracking=tracking,
+        )
+
+
+def _train(
+    data_path: Path,
+    out_dir: Path,
+    label_col: str,
+    seed: int,
+    calibration_size: float,
+    test_size: float,
+    cost_fp: float,
+    cost_fn: float,
+    *,
+    tracking: Any = None,
 ) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -164,6 +207,23 @@ def train(
         calibration_size=calibration_size,
         test_size=test_size,
     )
+    if tracking is not None:
+        tracking.log_params(
+            {
+                "seed": seed,
+                "calibration_size": calibration_size,
+                "test_size": test_size,
+                "cost_fp": cost_fp,
+                "cost_fn": cost_fn,
+                "label_col": label_col,
+                "dataset_name": data_path.name,
+                "dataset_sha256": _sha256_file(data_path),
+                "train_rows": len(X_train),
+                "calibration_rows": len(X_cal),
+                "test_rows": len(X_test),
+                "feature_count": X.shape[1],
+            }
+        )
 
     rf = RandomForestClassifier(
         n_estimators=300,
@@ -171,6 +231,8 @@ def train(
         n_jobs=-1,
         class_weight="balanced_subsample",
     )
+    if tracking is not None:
+        tracking.log_params({f"rf.{key}": value for key, value in rf.get_params().items()})
     rf.fit(X_train, y_train)
     rf_cal = CalibratedClassifierCV(rf, cv="prefit", method="sigmoid")
     rf_cal.fit(X_cal, y_cal)
@@ -196,6 +258,8 @@ def train(
         eval_metric="logloss",
         scale_pos_weight=scale_pos_weight,
     )
+    if tracking is not None:
+        tracking.log_params({f"xgb.{key}": value for key, value in xgb_clf.get_params().items()})
     xgb_clf.fit(X_train, y_train)
     xgb_cal = CalibratedClassifierCV(xgb_clf, cv="prefit", method="sigmoid")
     xgb_cal.fit(X_cal, y_cal)
@@ -323,6 +387,21 @@ def train(
         },
     }
     (out_dir / "metadata.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+    if tracking is not None:
+        for model, evaluations in thresholds["models"].items():
+            for split, key in (
+                ("calibration", "threshold_selection"),
+                ("holdout_test", "holdout_evaluation"),
+            ):
+                tracking.log_metrics(
+                    {
+                        f"{model}.{split}.{name}": float(value)
+                        for name, value in evaluations[key].items()
+                        if value is not None
+                    }
+                )
+        for name in (*metadata["artifact_integrity"]["expected_sha256"], "metadata.json"):
+            tracking.log_artifact(str(out_dir / name), artifact_path="release")
 
 
 def parse_args() -> argparse.Namespace:
@@ -352,6 +431,14 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument("--cost-fp", type=float, default=5.0, help="False positive cost.")
     p.add_argument("--cost-fn", type=float, default=500.0, help="False negative cost.")
+    p.add_argument(
+        "--no-tracking", action="store_true", help="Train without importing or writing to MLflow."
+    )
+    p.add_argument(
+        "--tracking-uri",
+        help="MLflow tracking URI (default: MLFLOW_TRACKING_URI or sqlite:///mlflow.db).",
+    )
+    p.add_argument("--experiment-name", default="fraud-risk-training", help="MLflow experiment.")
     return p.parse_args()
 
 
@@ -366,6 +453,9 @@ def main() -> None:
         test_size=args.test_size,
         cost_fp=args.cost_fp,
         cost_fn=args.cost_fn,
+        tracking_enabled=not args.no_tracking,
+        tracking_uri=args.tracking_uri,
+        experiment_name=args.experiment_name,
     )
 
 

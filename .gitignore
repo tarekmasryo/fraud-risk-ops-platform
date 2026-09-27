@@ -95,3 +95,6 @@ openapi.json
 *.sqlite
 *.sqlite3
 data/fraud_ops.db
+mlruns/
+mlflow.db-*
+mlflow.db

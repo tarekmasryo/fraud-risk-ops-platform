@@ -6,3 +6,4 @@ pre-commit==4.5.1
 pip-audit==2.9.0
 setuptools>=78.1.1
 watchfiles==0.24.0
+mlflow==3.16.1
