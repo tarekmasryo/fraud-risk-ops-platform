@@ -5,19 +5,38 @@ updates:
     schedule:
       interval: "monthly"
     open-pull-requests-limit: 5
+    groups:
+      application:
+        applies-to: version-updates
+        patterns: ["*"]
+        exclude-patterns: ["ruff", "pytest", "pytest-cov", "pre-commit", "pip-audit", "setuptools", "watchfiles"]
+      tooling:
+        applies-to: version-updates
+        patterns: ["ruff", "pytest", "pytest-cov", "pre-commit", "pip-audit", "setuptools", "watchfiles"]
+      security:
+        applies-to: security-updates
+        patterns: ["*"]
     ignore:
       # Serialized ML artifacts in artifacts/ are tied to this pinned runtime stack.
-      # Upgrade these only together with refreshed artifacts and full validation.
+      # Ignore routine version bumps only; security updates still require artifact review.
       - dependency-name: "numpy"
+        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
       - dependency-name: "scipy"
+        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
       - dependency-name: "scikit-learn"
+        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
       - dependency-name: "xgboost"
+        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
       - dependency-name: "joblib"
+        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
       - dependency-name: "pandas"
-      - dependency-name: "streamlit"
+        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
 
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "monthly"
     open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns: ["*"]
