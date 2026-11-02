@@ -47,6 +47,8 @@ jobs:
 
   docker:
     runs-on: ubuntu-latest
+    env:
+      COMPOSE_PROJECT_NAME: fraud-risk-ops-ci-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - uses: actions/checkout@v6
 
@@ -63,6 +65,9 @@ jobs:
           done
           curl -fsS http://127.0.0.1:8000/ready
           curl -fsS http://127.0.0.1:8000/metrics | head -n 5
+
+      - name: Redis and separate worker integration
+        run: python3 scripts/check_redis_worker.py
 
       - name: Stop Docker Compose
         if: always()

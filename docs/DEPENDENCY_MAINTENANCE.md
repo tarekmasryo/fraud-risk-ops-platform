@@ -35,6 +35,12 @@ Verify `/ready` returns 200 with compatibility fallback disabled, real predictio
 
 Security exceptions are documented in `SECURITY.md` and enforced by `scripts/audit_dependencies.py`. A failure is not resolved by setting `continue-on-error`, disabling artifact checks, or ignoring a whole package.
 
+### Redis and separate-worker CI gate
+
+The Docker job now runs `scripts/check_redis_worker.py` against its isolated `fraud-risk-ops-ci-*` Compose project. It stops the normal worker, verifies `RUN_JOBS_IN_API=false`, submits two synthetic records through the API, and checks the queued SQLite payload and exact job ID in Redis. A separate one-shot process from the existing worker service then runs the real `worker.run_once()` with only `OpsStore.claim_next_job` patched to fail. A negative control first proves that SQLite-only polling is rejected; the positive phase uses the real Redis client, models, scoring and store. Production worker code is unchanged.
+
+The gate requires Redis removal, completed job counts, a persisted `async_job` prediction request, matching prediction rows/results, and the job-creation and prediction-request audit records. Docker commands have 90-second timeouts, HTTP requests have 5-second timeouts, and job-status polling has a 30-second deadline. Failures print bounded container logs and process status; the existing always-run Compose cleanup removes disposable CI volumes. This gate closes the Redis validation requirement only after it passes on the PR commit. Browser visual/upload validation remains separate.
+
 ## Local verification, 2026-11-02
 
 - Windows Python 3.11.9: combined installation, `pip check`, Ruff lint/format, and pre-commit configuration validation passed. Upgrade the virtualenv bootstrap tools as shown above; its original pip 24.0 had separate advisories that were resolved by upgrading pip.
