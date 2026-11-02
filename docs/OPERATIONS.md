@@ -41,6 +41,8 @@ RUN_JOBS_IN_API=false
 
 In compose mode, the API persists queued jobs, pushes a Redis wake-up event, and the worker claims and executes jobs from the SQLite-backed job table. If Redis is temporarily unavailable, the worker still polls SQLite for queued jobs.
 
+Worker crash recovery is a separate limitation; see [WORKER_RECOVERY.md](WORKER_RECOVERY.md). Dependency update policy and validation are documented in [DEPENDENCY_MAINTENANCE.md](DEPENDENCY_MAINTENANCE.md).
+
 ## Monitoring
 
 Prometheus scrapes the API `/metrics` endpoint. `GET /v1/metrics/summary` provides persisted operational counters for reviewers and dashboard consumers. Grafana provisions the Prometheus datasource and Fraud Risk Ops dashboard automatically from `monitoring/grafana/`; the dashboard includes HTTP latency, prediction latency, errors, high-risk rate, policy usage, and batch-job status panels.

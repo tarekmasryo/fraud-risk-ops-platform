@@ -29,6 +29,8 @@ jobs:
           python -m pip install -U pip setuptools wheel
           pip install -r requirements.txt -r requirements-dev.txt
           pip install -e .
+          python -m pip check
+          python -m pip freeze --all
 
       - name: Ruff
         run: |
@@ -40,9 +42,8 @@ jobs:
           python -m pytest -q --cov=src --cov-fail-under=75
 
       - name: Security (pip-audit)
-        continue-on-error: true
         run: |
-          pip-audit -r requirements.txt --skip-editable
+          python scripts/audit_dependencies.py
 
   docker:
     runs-on: ubuntu-latest
