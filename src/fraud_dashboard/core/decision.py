@@ -47,13 +47,6 @@ def reason_codes_for_record(record: dict[str, Any], *, score: float, threshold: 
     elif amount_value >= 250.0:
         codes.append("amount_elevated")
 
-    time_value = float(
-        pd.to_numeric(pd.Series([record.get("Time", 0.0)]), errors="coerce").fillna(0.0).iloc[0]
-    )
-    hour = int((max(time_value, 0.0) % 86400) // 3600)
-    if hour < 6 or hour >= 22:
-        codes.append("unusual_time_window")
-
     if float(score) >= float(threshold):
         codes.append("score_above_policy_threshold")
     else:

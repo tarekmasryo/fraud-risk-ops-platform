@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import streamlit as st
 
-from fraud_dashboard.ui.data_io import get_active_dataframe, read_csv_any
+from fraud_dashboard.ui.data_io import get_active_dataframe
 from fraud_dashboard.ui.pages import (
     DataOverviewPage,
     DataQualitySegmentsPage,
@@ -244,14 +244,7 @@ class DashboardApp:
                 "Upload a CSV for profiling (optional)", type=["csv", "gz"], key="upload_tab5"
             )
             if uploaded_profile is not None:
-                try:
-                    df_prof = read_csv_any(uploaded_profile)
-                    prof_msg = (
-                        f"Using uploaded dataset: {getattr(uploaded_profile, 'name', 'uploaded')}"
-                    )
-                except Exception as e:
-                    st.error(f"Failed to read uploaded file: {type(e).__name__}")
-                    df_prof, prof_msg = get_active_dataframe(None)
+                df_prof, prof_msg = get_active_dataframe(uploaded_profile)
             else:
                 last = st.session_state.get("last_run", None)
                 if last is not None:

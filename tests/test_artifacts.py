@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 
 import joblib
@@ -49,6 +50,14 @@ def test_load_models_from_temp_artifacts(tmp_path) -> None:
     artifact_dir = tmp_path / "artifacts"
     artifact_dir.mkdir()
     joblib.dump(_TinyModel(), artifact_dir / "rf_calibrated.joblib")
+    joblib.dump(_TinyModel(), artifact_dir / "xgb_calibrated.joblib")
+    for name in ("policy.json", "thresholds.json"):
+        (artifact_dir / name).write_text("{}")
+    metadata = load_metadata()
+    metadata["artifact_integrity"]["expected_sha256"] = {
+        path.name: hashlib.sha256(path.read_bytes()).hexdigest() for path in artifact_dir.iterdir()
+    }
+    (artifact_dir / "metadata.json").write_text(json.dumps(metadata))
 
     models = load_models(root=tmp_path)
     assert "rf" in models
