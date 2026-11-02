@@ -8,6 +8,7 @@ import pandas as pd
 import streamlit as st
 
 from fraud_dashboard.data.synthetic import SyntheticCreditcardSpec, generate_synthetic_creditcard
+from fraud_dashboard.data.validation import coerce_numeric, validate_finite, validate_no_nan
 
 DEFAULT_DATA_PATHS = [
     "data/demo_creditcard.csv",
@@ -49,13 +50,28 @@ def try_load_default_dataset() -> tuple[pd.DataFrame | None, str]:
     )
 
 
+def validate_ui_dataframe(df: pd.DataFrame) -> pd.DataFrame:
+    """Reject unusable numeric input before charts, engineering or evaluation."""
+    if df.empty:
+        raise ValueError("CSV contains no data rows. Upload a header and at least one record.")
+    columns = [c for c in ["Time", "Amount", "Class", *[f"V{i}" for i in range(1, 29)]] if c in df]
+    out = coerce_numeric(df, columns)
+    validate_no_nan(out, columns)
+    validate_finite(out, columns)
+    if "Class" in out and not out["Class"].isin([0, 1]).all():
+        raise ValueError("Class must contain only 0 (non-fraud) or 1 (fraud).")
+    if "Amount" in out and (out["Amount"] < 0).any():
+        raise ValueError("Amount must be non-negative.")
+    return out
+
+
 def get_active_dataframe(uploaded_file) -> tuple[pd.DataFrame, str]:
     if uploaded_file is not None:
         try:
-            df = read_csv_any(uploaded_file)
+            df = validate_ui_dataframe(read_csv_any(uploaded_file))
             return df, f"Using uploaded dataset: {getattr(uploaded_file, 'name', 'uploaded')}"
         except Exception as e:
-            st.error(f"Failed to read uploaded file: {type(e).__name__}")
+            st.error(f"Invalid CSV: {e}. Check the header, delimiters, quoting and numeric values.")
             return pd.DataFrame(), "Upload failed."
     df0, msg = try_load_default_dataset()
     if df0 is None:

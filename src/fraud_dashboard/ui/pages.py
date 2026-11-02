@@ -20,6 +20,7 @@ from sklearn.metrics import (
 )
 
 from fraud_dashboard.core.artifacts import load_models
+from fraud_dashboard.ui.data_io import validate_ui_dataframe
 from fraud_dashboard.ui.theme import PRIMARY, style_fig
 
 
@@ -76,10 +77,6 @@ def build_engineered_features(df: pd.DataFrame) -> pd.DataFrame:
     if "Time" in out.columns and "Hour_from_start_mod24" not in out.columns:
         hours = (out["Time"].astype(float) / 3600.0) % 24.0
         out["Hour_from_start_mod24"] = hours.astype(int)
-    if "Hour_from_start_mod24" in out.columns:
-        h = out["Hour_from_start_mod24"].astype(int)
-        out["is_business_hours_proxy"] = ((h >= 9) & (h <= 17)).astype(int)
-        out["is_night_proxy"] = ((h <= 6) | (h >= 22)).astype(int)
     return out
 
 
@@ -118,6 +115,11 @@ class DataOverviewPage:
         if df.empty:
             st.warning("No data loaded yet.")
             return
+        try:
+            df = validate_ui_dataframe(df)
+        except ValueError as exc:
+            st.error(str(exc))
+            return
 
         st.write(f"Shape: {df.shape[0]:,} rows × {df.shape[1]} columns")
         dataframe_full_width(st, df.head(50))
@@ -142,13 +144,12 @@ class PredictionEnginePage:
         self.expected_features = expected_features
 
     def _ensure_features(self, df: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
-        df2 = build_engineered_features(df)
+        df2 = build_engineered_features(validate_ui_dataframe(df))
         missing = [c for c in self.expected_features if c not in df2.columns]
         if missing:
-            st.error(
+            raise ValueError(
                 f"Missing required columns: {missing[:12]}{' ...' if len(missing) > 12 else ''}"
             )
-            st.stop()
         return df2[self.expected_features].copy(), self.expected_features
 
     def render(
@@ -164,12 +165,18 @@ class PredictionEnginePage:
     ) -> None:
         st.subheader("Run Batch Prediction")
         st.info(src_msg)
+        st.session_state.pop("last_run", None)
 
         if df_pred.empty:
             st.warning("No data to predict on yet.")
             return
 
-        X, used_cols = self._ensure_features(df_pred)
+        try:
+            df_pred = validate_ui_dataframe(df_pred)
+            X, used_cols = self._ensure_features(df_pred)
+        except ValueError as exc:
+            st.error(str(exc))
+            return
         if len(used_cols) == 0:
             st.error("No usable feature columns found.")
             return
@@ -203,7 +210,7 @@ class PredictionEnginePage:
             st.info(f"Inference: {elapsed:.3f}s — Labels not found; metrics skipped.")
 
         st.session_state["last_run"] = RunState(
-            df=df_pred,
+            df=df_pred.copy(deep=True),
             X=X,
             features=used_cols,
             y_true=y_true,
@@ -254,6 +261,11 @@ class ModelMetricsPage:
 
         y_true = state.y_true
         y_prob = state.y_prob
+        if np.unique(y_true).size < 2:
+            st.info(
+                "Evaluation requires both Class=0 and Class=1. ROC/AUC and threshold comparison are unavailable for a single-class dataset."
+            )
+            return
         y_pred = (y_prob >= thr).astype(int)
 
         prec = precision_score(y_true, y_pred, zero_division=0)
@@ -504,6 +516,10 @@ class ModelInsightsPage:
         y_true = state.y_true
         model_key = state.model_key
 
+        if np.unique(y_true).size < 2:
+            st.info("ROC AUC permutation importance requires both Class=0 and Class=1.")
+            return
+
         if model_key not in self._models():
             st.warning(f"Local model '{model_key}' not found. Cannot compute importances.")
             return
@@ -514,6 +530,12 @@ class ModelInsightsPage:
             idx = np.random.RandomState(42).choice(len(X_sub), 6000, replace=False)
             X_sub = X_sub.iloc[idx]
             y_sub = y_sub[idx]
+
+        if np.unique(y_sub).size < 2:
+            st.info(
+                "The evaluation sample contains only one class; permutation importance is unavailable."
+            )
+            return
 
         with st.spinner("Computing permutation importances..."):
             res = permutation_importance(
@@ -559,12 +581,22 @@ class DataQualitySegmentsPage:
         st.info(src_msg)
 
         state = st.session_state.get("last_run", None)
-        y_true = getattr(state, "y_true", None) if state else None
-        y_prob = getattr(state, "y_prob", None) if state else None
 
         if df.empty:
             st.warning("No data available for profiling yet.")
             return
+        try:
+            df = validate_ui_dataframe(df)
+        except ValueError as exc:
+            st.error(str(exc))
+            return
+        matches = state is not None and df.equals(state.df)
+        y_true = state.y_true if matches else None
+        y_prob = state.y_prob if matches else None
+        if state is not None and not matches:
+            st.info(
+                "Segmented prediction metrics are unavailable: this dataset differs from the last prediction dataset. Run prediction on this dataset first."
+            )
 
         c1, c2, c3 = st.columns(3)
         with c1:
@@ -594,6 +626,9 @@ class DataQualitySegmentsPage:
             h2 = px.histogram(df_tmp, x="Hour_from_start_mod24", nbins=24, title=None)
             h2 = style_fig(h2, "Hour from start (mod 24)")
             plotly_full_width(col2, h2)
+            st.caption(
+                "Time is elapsed seconds since the first transaction. These buckets do not represent local time, business hours or night-time activity."
+            )
 
         if y_true is not None and y_prob is not None and "Amount" in df.columns:
             st.markdown("### Segmented Metrics by Amount (quintiles)")

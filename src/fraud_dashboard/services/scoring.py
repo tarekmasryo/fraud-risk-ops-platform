@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 from collections.abc import Callable
+from functools import lru_cache
 from typing import Any
 
 import pandas as pd
@@ -9,7 +10,7 @@ from fastapi import HTTPException
 
 from fraud_dashboard.api.schemas import PredictBatchResponse, PredictResponse
 from fraud_dashboard.core.artifact_contract import artifact_checksums
-from fraud_dashboard.core.artifacts import load_bundle
+from fraud_dashboard.core.artifacts import artifacts_dir, load_bundle
 from fraud_dashboard.core.config import get_settings
 from fraud_dashboard.core.decision import (
     decision_from_score,
@@ -21,7 +22,6 @@ from fraud_dashboard.core.errors import ArtifactContractError, PredictionRuntime
 from fraud_dashboard.core.policy import (
     get_default_policy_name,
     get_policy_threshold,
-    load_policy,
 )
 from fraud_dashboard.core.predict import apply_threshold, predict_proba
 from fraud_dashboard.core.thresholds import (
@@ -50,6 +50,16 @@ PolicyLoader = Callable[[], dict[str, Any]]
 StoreFactory = Callable[[], OpsStore]
 
 
+@lru_cache(maxsize=1)
+def _validated_bundle(artifact_path: str) -> dict[str, Any]:
+    # One immutable release per process; restart API/worker after artifact deployment.
+    return load_bundle()
+
+
+def _default_bundle() -> dict[str, Any]:
+    return _validated_bundle(str(artifacts_dir().resolve()))
+
+
 class FraudScoringService:
     """Application service for fraud scoring and decision persistence.
 
@@ -62,8 +72,8 @@ class FraudScoringService:
     def __init__(
         self,
         *,
-        bundle_loader: BundleLoader = load_bundle,
-        policy_loader: PolicyLoader = load_policy,
+        bundle_loader: BundleLoader = _default_bundle,
+        policy_loader: PolicyLoader | None = None,
         store_factory: StoreFactory = get_store,
     ) -> None:
         self._bundle_loader = bundle_loader
@@ -74,7 +84,7 @@ class FraudScoringService:
         return self._bundle_loader()
 
     def policy(self) -> dict[str, Any]:
-        return self._policy_loader()
+        return self._policy_loader() if self._policy_loader else self.bundle()["policy"]
 
     def store(self) -> OpsStore:
         return self._store_factory()

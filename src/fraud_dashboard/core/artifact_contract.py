@@ -12,7 +12,6 @@ from fraud_dashboard.core.artifacts import (
     load_metadata,
     load_models,
 )
-from fraud_dashboard.core.config import get_settings
 from fraud_dashboard.core.errors import ArtifactContractError
 from fraud_dashboard.core.policy import get_policy_threshold, load_policy
 from fraud_dashboard.core.predict import predict_proba
@@ -67,9 +66,9 @@ def _validate_expected_checksums(
     checks["artifact_checksums_available"] = bool(current)
     checks["artifact_checksum_manifest_present"] = bool(expected)
     if not expected:
-        warnings.append(
+        errors.append(
             "No expected checksum manifest found in metadata; "
-            "artifact checksums are exposed but not verified."
+            "scoring is disabled until a trusted manifest is supplied."
         )
         return
 
@@ -91,8 +90,17 @@ def check_artifact_contract(*, run_sample_prediction: bool = True) -> ContractCh
     errors: list[str] = []
     checks: dict[str, bool] = {}
 
-    metadata = load_metadata()
-    policy = load_policy()
+    try:
+        metadata = load_metadata()
+        policy = load_policy()
+    except (OSError, ValueError, TypeError) as exc:
+        return ContractCheckResult(
+            ok=False,
+            status="not_ready",
+            warnings=[],
+            errors=[f"Cannot read artifact metadata or policy: {exc}"],
+            checks={"sample_prediction": False},
+        )
 
     checks["metadata_present"] = bool(metadata)
     if not metadata:
@@ -113,11 +121,11 @@ def check_artifact_contract(*, run_sample_prediction: bool = True) -> ContractCh
     warnings.extend(check_env_versions(metadata))
     runtime_matches = not warnings
     checks["runtime_matches_metadata"] = runtime_matches
-    strict_runtime_failed = bool(warnings and get_settings().strict_artifact_runtime)
+    strict_runtime_failed = bool(warnings)
     if strict_runtime_failed:
         errors.append(
             "Artifact runtime mismatch. Recreate the environment from requirements.txt, "
-            "retrain artifacts, or disable STRICT_ARTIFACT_RUNTIME only for local UI review."
+            "or deploy artifacts compatible with this runtime."
         )
 
     adir = artifacts_dir()
@@ -127,7 +135,7 @@ def check_artifact_contract(*, run_sample_prediction: bool = True) -> ContractCh
         if not exists:
             errors.append(f"Missing model artifact: {name}")
 
-    if strict_runtime_failed:
+    if errors:
         checks["sample_prediction"] = False
     elif run_sample_prediction and checks.get("schema_features_present"):
         try:

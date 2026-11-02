@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 import warnings
@@ -14,6 +15,7 @@ except Exception:  # pragma: no cover
     InconsistentVersionWarning = Warning
 
 from fraud_dashboard.core.config import get_settings
+from fraud_dashboard.core.errors import ArtifactContractError
 from fraud_dashboard.core.thresholds import normalize_model_key
 
 
@@ -75,6 +77,39 @@ def load_thresholds(root: Path | None = None) -> dict[str, Any]:
     return raw
 
 
+def validate_artifacts(root: Path | None = None) -> None:
+    """Validate trusted release metadata before any deserialization.
+
+    The manifest must be deployed from a trusted source together with the models.
+    This detects corruption, not an attacker replacing both files and manifest.
+    """
+    try:
+        adir = artifacts_dir(root)
+        metadata = load_metadata(root)
+        env = metadata.get("env", {})
+        if not all(env.get(key) for key in ("python", "scikit_learn", "xgboost")):
+            raise ValueError("Missing artifact runtime version requirements")
+        mismatches = check_env_versions(metadata)
+        if mismatches:
+            raise ValueError("; ".join(mismatches))
+        expected = metadata.get("artifact_integrity", {}).get("expected_sha256", {})
+        required = {p.name for p in adir.glob("*.joblib")}
+        required.update(
+            {"rf_calibrated.joblib", "xgb_calibrated.joblib", "policy.json", "thresholds.json"}
+        )
+        if not isinstance(expected, dict) or not required.issubset(expected):
+            raise ValueError("Missing checksum manifest entries for model or policy artifacts")
+        for name, digest in expected.items():
+            if Path(name).name != name:
+                raise ValueError("Invalid artifact manifest filename")
+            with (adir / name).open("rb") as stream:
+                actual = hashlib.file_digest(stream, "sha256").hexdigest()
+            if actual != digest:
+                raise ValueError(f"Artifact checksum mismatch: {name}")
+    except (OSError, ValueError, TypeError, AttributeError) as exc:
+        raise ArtifactContractError(f"Artifact validation failed: {exc}") from exc
+
+
 def load_models(root: Path | None = None) -> dict[str, Any]:
     """Load calibrated models if present.
 
@@ -87,6 +122,7 @@ def load_models(root: Path | None = None) -> dict[str, Any]:
       - "xgb"
     """
 
+    validate_artifacts(root)
     adir = artifacts_dir(root)
     models: dict[str, Any] = {}
 
@@ -126,6 +162,7 @@ def load_bundle(root: Path | None = None) -> dict[str, Any]:
     Tests and the API expect a mapping with stable keys.
     """
 
+    models = load_models(root)
     metadata = load_metadata(root)
     thresholds = load_thresholds(root)
     try:
@@ -135,7 +172,6 @@ def load_bundle(root: Path | None = None) -> dict[str, Any]:
         thresholds = {**thresholds, **policy_to_thresholds(policy)}
     except Exception:
         policy = {}
-    models = load_models(root)
     schema = (metadata or {}).get("schema", {})
 
     return {

@@ -5,7 +5,7 @@ services:
       target: api
     image: fraud-risk-ops-api:local
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     environment:
       - PYTHONUNBUFFERED=1
       - APP_ENV=compose
@@ -58,7 +58,7 @@ services:
       target: ui
     image: fraud-risk-ops-ui:local
     ports:
-      - "8501:8501"
+      - "127.0.0.1:8501:8501"
     environment:
       - PYTHONUNBUFFERED=1
       - FRAUD_API_URL=http://api:8000
@@ -74,13 +74,13 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     restart: unless-stopped
 
   prometheus:
     image: prom/prometheus:v2.55.1
     ports:
-      - "9090:9090"
+      - "127.0.0.1:9090:9090"
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     depends_on:
@@ -90,7 +90,7 @@ services:
   grafana:
     image: grafana/grafana:11.3.0
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     environment:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-change-me}

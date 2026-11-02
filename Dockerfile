@@ -30,6 +30,7 @@ RUN python -m ruff check . &&         python -m ruff format --check . &&        
 # ---------- Runtime: API ----------
 FROM base AS api
 COPY --chown=appuser:appuser . /app
+RUN install -d -o appuser -g appuser /app/data
 USER appuser
 EXPOSE 8000
 CMD ["python","-m","uvicorn","fraud_dashboard.api.main:app","--host","0.0.0.0","--port","8000"]

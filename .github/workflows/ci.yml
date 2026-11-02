@@ -52,12 +52,16 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Docker build-context canaries
+        run: python3 scripts/check_docker_context.py
+
       - name: Build test stage
         run: |
           docker build --target test -t fraud-risk-ops:test .
 
       - name: Docker Compose smoke test
         run: |
+          docker compose config --quiet
           docker compose up -d --build
           for i in {1..30}; do
             if curl -fsS http://127.0.0.1:8000/live; then break; fi
@@ -65,6 +69,10 @@ jobs:
           done
           curl -fsS http://127.0.0.1:8000/ready
           curl -fsS http://127.0.0.1:8000/metrics | head -n 5
+
+      - name: Verify test and runtime image inputs
+        run: |
+          python3 scripts/check_docker_context.py --images fraud-risk-ops:test fraud-risk-ops-api:local fraud-risk-ops-worker:local fraud-risk-ops-ui:local
 
       - name: Redis and separate worker integration
         run: python3 scripts/check_redis_worker.py

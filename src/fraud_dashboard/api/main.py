@@ -24,7 +24,7 @@ from fraud_dashboard.core.artifact_contract import (
 )
 from fraud_dashboard.core.artifacts import load_bundle, load_metadata, load_thresholds
 from fraud_dashboard.core.config import get_settings, validate_settings
-from fraud_dashboard.core.errors import PredictionRuntimeError
+from fraud_dashboard.core.errors import ArtifactContractError, PredictionRuntimeError
 from fraud_dashboard.core.logging import configure_logging
 from fraud_dashboard.core.policy import (
     get_policy_threshold,
@@ -66,7 +66,7 @@ def _policy() -> dict[str, Any]:
 
 
 def _scoring_service() -> FraudScoringService:
-    return FraudScoringService(bundle_loader=_bundle, policy_loader=_policy)
+    return FraudScoringService(bundle_loader=_bundle)
 
 
 def _reference_bundle() -> dict[str, Any]:
@@ -176,6 +176,13 @@ def create_app() -> FastAPI:
             },
         )
         return response
+
+    @app.exception_handler(ArtifactContractError)
+    async def artifact_error(_request: Request, exc: ArtifactContractError) -> JSONResponse:
+        logger.error("artifact_validation_failed", extra={"error": str(exc)})
+        return JSONResponse(
+            status_code=503, content={"detail": "Model artifacts failed validation."}
+        )
 
     @app.exception_handler(PredictionRuntimeError)
     async def prediction_error_handler(  # type: ignore[no-untyped-def]
