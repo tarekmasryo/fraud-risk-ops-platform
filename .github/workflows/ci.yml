@@ -34,7 +34,6 @@ jobs:
 
       - name: Ruff
         run: |
-          python -m ruff format --diff src/fraud_dashboard/ui/api_client.py tests/test_ui_api_predictor.py || true
           python -m ruff format --check .
           python -m ruff check . --output-format=github
 
