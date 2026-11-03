@@ -155,6 +155,7 @@ def test_local_and_api_share_effective_policies_and_public_contract(monkeypatch,
         api._bundle.cache_clear()
         api._policy.cache_clear()
 
+
 def test_server_managed_api_origin_rejects_unsafe_urls(monkeypatch) -> None:
     import pytest
 
@@ -243,9 +244,7 @@ def test_sidebar_never_exposes_server_credentials_or_lets_users_change_api_origi
         predictor = SimpleNamespace(info=lambda: SimpleNamespace(kind="api"))
         return predictor, "Using trusted configured backend"
 
-    monkeypatch.setattr(
-        predictors, "st", SimpleNamespace(sidebar=Sidebar(), text_input=text_input)
-    )
+    monkeypatch.setattr(predictors, "st", SimpleNamespace(sidebar=Sidebar(), text_input=text_input))
     monkeypatch.setattr(predictors, "resolve_predictor", resolve)
 
     _predictor, meta = predictors.ui_backend_selector()
@@ -253,10 +252,7 @@ def test_sidebar_never_exposes_server_credentials_or_lets_users_change_api_origi
     assert meta["auth_configured"] is True
     assert len(inputs) == 2
     assert {label for label, _settings in inputs} == {"API key", "Bearer token"}
-    assert all(
-        kwargs["value"] == "" and kwargs["type"] == "password"
-        for _, kwargs in inputs
-    )
+    assert all(kwargs["value"] == "" and kwargs["type"] == "password" for _, kwargs in inputs)
     assert calls[-1]["api_key"] == "server-key-not-for-browser"
     assert calls[-1]["bearer_token"] == "server-token-not-for-browser"
 
