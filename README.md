@@ -224,16 +224,16 @@ Example response shape:
 ```json
 {
   "model": "rf",
-  "threshold": 0.0534831589433206,
-  "proba_fraud": 0.0123,
-  "risk_score": 0.0123,
+  "threshold": 0.0016451652802712843,
+  "proba_fraud": 0.000123,
+  "risk_score": 0.000123,
   "label": 0,
   "decision": "approve",
   "review_required": false,
   "risk_band": "low",
   "reason_codes": ["score_below_policy_threshold", "risk_band_low"],
   "policy": "min_cost",
-  "policy_version": "fraud-risk-ops-v0.1.0",
+  "policy_version": "fraud-risk-ops-v0.1.0-sklearn1.5.2",
   "input_hash": "...",
   "latency_ms": 12,
   "request_id": "pred_..."

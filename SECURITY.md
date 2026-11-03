@@ -15,13 +15,19 @@ This repository ships **pre-trained serialized artifacts** in `artifacts/`. To k
 
 When the ML/data stack changes, refresh the artifacts and rerun the full validation suite before release.
 
-## Temporary vulnerability exception
+## CVE-2024-5206 migration
 
-`security-exceptions.json` accepts only **CVE-2024-5206** (aliases **PYSEC-2024-110**, **GHSA-jw8x-6495-233v**) in **scikit-learn 1.4.2**, until **2026-12-02**. The repository maintainer owns review and removal. The audit checks the package, exact version, advisory or alias, and expiration; it does not suppress other scikit-learn findings. Expiration fails CI even if the advisory disappears.
+The reference release uses `scikit-learn==1.5.2` with newly trained calibrated
+RF/XGBoost models. The previous 1.4.2 artifacts are not supported by this runtime.
+The [advisory](https://github.com/advisories/GHSA-jw8x-6495-233v) is fixed from 1.5.0.
+`security-exceptions.json` is empty: the candidate installed graph passed a
+no-exception audit before removal, and the final release audit remains blocking.
+No package or advisory is suppressed by this migration.
 
-The [advisory](https://github.com/advisories/GHSA-jw8x-6495-233v) concerns training tokens retained by `TfidfVectorizer.stop_words_`. `scripts/train.py` trains numeric RandomForest/XGBoost models with calibrated wrappers and uses no text vectorizers. The packaged artifacts are trusted reference models, not user-uploaded estimators. Maintenance verification inspects their fitted object graphs for text vectorizers and compares predictions before and after the upgrade. Uploaded application input is numeric CSV, not serialized models.
-
-This is a scoped applicability exception, not a claim that scikit-learn is generally vulnerability-free. Version 1.5.0 is the advisory's fix, but changing scikit-learn alone invalidates the pinned artifact environment. Remove the exception during a coordinated ML-stack/artifact refresh, or earlier if text vectorizers, untrusted models, or relevant data paths are introduced. Do not extend it automatically.
+See [migration evidence](docs/SKLEARN_MIGRATION.md) for dataset provenance,
+independent holdout results, threshold changes, reproducibility and remaining
+container/browser gates. Artifact runtime and checksum validation remain mandatory.
+The numeric-model graph checks remain regression coverage, not an exception policy.
 
 ## Protected-mode boundary
 

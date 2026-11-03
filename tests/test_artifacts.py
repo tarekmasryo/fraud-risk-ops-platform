@@ -30,7 +30,7 @@ def test_project_root_exists() -> None:
 
 def test_load_metadata_has_schema() -> None:
     metadata = load_metadata()
-    assert metadata["artifact_version"] == "fraud-risk-ops-v0.1.0"
+    assert metadata["artifact_version"] == "fraud-risk-ops-v0.1.0-sklearn1.5.2"
     assert "features" in metadata["schema"]
     assert len(metadata["schema"]["features"]) > 10
 

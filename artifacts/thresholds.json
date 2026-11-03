@@ -1,24 +1,75 @@
 {
-  "COST_FN": 10.0,
-  "COST_FP": 1.0,
-  "RF_Thr_MinCost": 0.0534831589433206,
-  "RF_Thr_P90": 0.65,
-  "XGB_Thr_MinCost": 0.22812701761722565,
-  "XGB_Thr_P90": 0.75,
-  "artifact_version": "fraud-risk-ops-v0.1.0",
+  "artifact_version": "fraud-risk-ops-v0.1.0-sklearn1.5.2",
   "default_model": "rf",
+  "split_policy": "train/calibration/holdout_test",
+  "selection_split": "calibration",
+  "reporting_split": "holdout_test",
+  "cost_settings": {
+    "cost_fp": 5.0,
+    "cost_fn": 500.0
+  },
   "models": {
     "rf": {
-      "threshold": 0.0534831589433206,
-      "legacy_validation_f1_reference": 0.8817204301070282,
-      "metric_status": "reference_only_not_holdout_certified"
+      "threshold": 0.0016451652802712843,
+      "threshold_selection": {
+        "threshold": 0.0016451652802712843,
+        "tp": 62,
+        "fp": 29,
+        "tn": 42618,
+        "fn": 12,
+        "precision": 0.6813186813186813,
+        "recall": 0.8378378378378378,
+        "f1": 0.7515151515151515,
+        "roc_auc": 0.9629428007039562,
+        "review_rate": 0.002130099950843847,
+        "total_cost": 6145.0,
+        "average_cost": 0.14384026591137847
+      },
+      "holdout_evaluation": {
+        "threshold": 0.0016451652802712843,
+        "tp": 63,
+        "fp": 25,
+        "tn": 42623,
+        "fn": 11,
+        "precision": 0.7159090909090909,
+        "recall": 0.8513513513513513,
+        "f1": 0.7777777777777778,
+        "roc_auc": 0.95579733151835,
+        "review_rate": 0.0020598286597069424,
+        "total_cost": 5625.0,
+        "average_cost": 0.1316651842142222
+      }
     },
     "xgb": {
-      "threshold": 0.22812701761722565,
-      "legacy_validation_f1_reference": 0.8756756756751775,
-      "metric_status": "reference_only_not_holdout_certified"
+      "threshold": 0.0005568324704654515,
+      "threshold_selection": {
+        "threshold": 0.0005568324704654515,
+        "tp": 64,
+        "fp": 79,
+        "tn": 42568,
+        "fn": 10,
+        "precision": 0.44755244755244755,
+        "recall": 0.8648648648648649,
+        "f1": 0.5898617511520737,
+        "roc_auc": 0.9824554371239954,
+        "review_rate": 0.0033472999227546173,
+        "total_cost": 5395.0,
+        "average_cost": 0.12628449708574238
+      },
+      "holdout_evaluation": {
+        "threshold": 0.0005568324704654515,
+        "tp": 63,
+        "fp": 63,
+        "tn": 42585,
+        "fn": 11,
+        "precision": 0.5,
+        "recall": 0.8513513513513513,
+        "f1": 0.63,
+        "roc_auc": 0.9675969406378804,
+        "review_rate": 0.0029493001263985767,
+        "total_cost": 5815.0,
+        "average_cost": 0.13611254154768035
+      }
     }
-  },
-  "split_policy": "packaged_reference_artifacts",
-  "metrics_note": "Packaged metrics are reference-only. Regenerate artifacts with scripts/train.py for calibration-selected thresholds and holdout-test reporting."
+  }
 }

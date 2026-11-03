@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased — scikit-learn security and reference model migration
+
+- Upgrade scikit-learn to 1.5.2 and regenerate the coherent reference model release from independently verified Kaggle dataset version 3.
+- Remove the CVE-2024-5206 exception after a no-exemption installed-environment audit.
+- Preserve API schemas and model keys; probabilities, min-cost thresholds, and the policy version intentionally change.
+- Record provenance, split fingerprints, calibration/holdout metrics and new golden witnesses; historical performance parity is not claimed.
+- See [migration evidence](docs/SKLEARN_MIGRATION.md) for limitations and pending CI/browser gates.
+
 ## v0.1.0 â€” Final release hardening
 
 - Reworked `scripts/train.py` to use separate train, calibration/threshold-selection, and holdout-test reporting splits.
