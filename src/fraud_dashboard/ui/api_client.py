@@ -27,11 +27,7 @@ def configured_api_url() -> str:
     Credentials must not be forwarded to URL userinfo, arbitrary paths, queries or
     fragments. Local HTTP and Docker service DNS remain supported for reference use.
     """
-    raw = (
-        os.getenv("FRAUD_API_URL")
-        or os.getenv("API_BASE_URL")
-        or "http://127.0.0.1:8000"
-    )
+    raw = os.getenv("FRAUD_API_URL") or os.getenv("API_BASE_URL") or "http://127.0.0.1:8000"
     try:
         url = urlsplit(raw)
         valid = (
