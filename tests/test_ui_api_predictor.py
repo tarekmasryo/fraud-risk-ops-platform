@@ -178,7 +178,11 @@ def test_server_managed_api_origin_rejects_unsafe_urls(monkeypatch) -> None:
 def test_server_managed_api_origin_supports_local_and_https(monkeypatch) -> None:
     from fraud_dashboard.ui.api_client import configured_api_url, get_api_config
 
-    for address in ["http://127.0.0.1:8000", "http://api:8000/", "https://api.example.test"]:
+    for address in [
+        "http://127.0.0.1:8000",
+        "http://api:8000/",
+        "https://api.example.test",
+    ]:
         monkeypatch.setenv("FRAUD_API_URL", address)
         assert configured_api_url() == address.rstrip("/")
         assert get_api_config().base_url == address.rstrip("/")
@@ -249,7 +253,10 @@ def test_sidebar_never_exposes_server_credentials_or_lets_users_change_api_origi
     assert meta["auth_configured"] is True
     assert len(inputs) == 2
     assert {label for label, _settings in inputs} == {"API key", "Bearer token"}
-    assert all(kwargs["value"] == "" and kwargs["type"] == "password" for _, kwargs in inputs)
+    assert all(
+        kwargs["value"] == "" and kwargs["type"] == "password"
+        for _, kwargs in inputs
+    )
     assert calls[-1]["api_key"] == "server-key-not-for-browser"
     assert calls[-1]["bearer_token"] == "server-token-not-for-browser"
 
