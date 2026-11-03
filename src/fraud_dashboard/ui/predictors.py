@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import time
 from dataclasses import dataclass
 from typing import Any, Protocol
@@ -25,7 +24,7 @@ except ModuleNotFoundError:  # pragma: no cover - keeps non-UI unit tests lightw
 from fraud_dashboard.core.artifacts import load_bundle
 from fraud_dashboard.core.config import get_settings
 from fraud_dashboard.core.predict import predict_proba
-from fraud_dashboard.ui.api_client import ApiConfig, fetch_metadata, ping_ok, predict_batch
+from fraud_dashboard.ui.api_client import ApiConfig, fetch_metadata, get_api_config, ping_ok, predict_batch
 
 
 @dataclass(frozen=True)
@@ -203,28 +202,40 @@ def resolve_predictor(
 def ui_backend_selector() -> tuple[Predictor, dict[str, Any]]:
     st.sidebar.header("Backend")
     mode = st.sidebar.radio("Inference mode", ["Auto", "API", "Local"], horizontal=True)
-    default_url = os.getenv("FRAUD_API_URL", "http://127.0.0.1:8000")
-    api_url = st.sidebar.text_input("FastAPI base URL", value=default_url)
+
+    # Browser visitors cannot redirect authenticated server-side API calls.
+    server_config = get_api_config()
+    api_url = server_config.base_url
+    st.sidebar.caption("API endpoint is configured on the server.")
 
     with st.sidebar.expander("Protected API auth", expanded=False):
-        api_key = st.text_input(
+        api_key_input = st.text_input(
             "API key",
-            value=os.getenv("FRAUD_API_KEY", ""),
+            value="",
             type="password",
-            help="Sent as X-API-Key when REQUIRE_AUTH=true.",
+            key="manual_api_key_v2",
+            help="Optional per-session credential; server credentials are never displayed.",
         )
-        bearer_token = st.text_input(
+        bearer_input = st.text_input(
             "Bearer token",
-            value=os.getenv("FRAUD_BEARER_TOKEN", ""),
+            value="",
             type="password",
-            help="Optional JWT from POST /v1/auth/login. API key is usually simpler for local review.",
+            key="manual_bearer_token_v2",
+            help="Optional JWT for a trusted local review session.",
         )
+
+    api_key_input = api_key_input.strip()
+    bearer_input = bearer_input.strip()
+    manual_override = bool(api_key_input or bearer_input)
+    # Do not mix per-session overrides with other server-provided credentials.
+    effective_api_key = (api_key_input or None) if manual_override else server_config.api_key
+    effective_bearer = (bearer_input or None) if manual_override else server_config.bearer_token
 
     predictor, msg = resolve_predictor(
         mode,
         api_url,
-        api_key=api_key.strip() or None,
-        bearer_token=bearer_token.strip() or None,
+        api_key=effective_api_key,
+        bearer_token=effective_bearer,
     )
 
     if predictor.info().kind == "api":
@@ -233,10 +244,9 @@ def ui_backend_selector() -> tuple[Predictor, dict[str, Any]]:
         st.sidebar.info("Local mode")
 
     st.sidebar.caption(msg)
-
     meta = {
         "mode": mode,
-        "api_url": api_url.rstrip("/"),
-        "auth_configured": bool(api_key.strip() or bearer_token.strip()),
+        "api_url": api_url,
+        "auth_configured": bool(effective_api_key or effective_bearer),
     }
     return predictor, meta
