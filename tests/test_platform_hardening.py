@@ -60,7 +60,8 @@ def test_policy_file_is_single_source_of_truth() -> None:
     policy = load_policy()
     assert policy["default_model"] == "rf"
     assert (
-        get_policy_threshold(policy, model_key="rf", policy_name="min_cost") == 0.0534831589433206
+        get_policy_threshold(policy, model_key="rf", policy_name="min_cost")
+        == 0.0016451652802712843
     )
     assert get_policy_threshold(policy, model_key="xgb", policy_name="balanced") == 0.75
 

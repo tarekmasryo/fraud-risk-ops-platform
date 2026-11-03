@@ -1,21 +1,17 @@
 {
-  "artifact_version": "fraud-risk-ops-v0.1.0",
-  "trained_at": "2026-05-03T00:00:00Z",
+  "artifact_version": "fraud-risk-ops-v0.1.0-sklearn1.5.2",
+  "trained_at": "2026-11-03T00:36:26Z",
   "env": {
-    "python": "3.11.2",
-    "platform": "Linux-4.4.0-x86_64-with-glibc2.36",
-    "scikit_learn": "1.4.2",
+    "python": "3.11.9",
+    "platform": "Windows-10-10.0.26200-SP0",
+    "scikit_learn": "1.5.2",
     "xgboost": "3.0.2"
   },
-  "models": {
-    "random_forest": {
-      "file": "rf_calibrated.joblib",
-      "pipeline_file": "rf_pipe.joblib"
-    },
-    "xgboost": {
-      "file": "xgb_calibrated.joblib",
-      "pipeline_file": "xgb_pipe.joblib"
-    }
+  "release": {
+    "project": "fraud-risk-ops-platform",
+    "version": "0.1.0",
+    "purpose": "ops_platform_reference_artifact",
+    "runtime_policy": "fail_closed_on_artifact_runtime_mismatch"
   },
   "schema": {
     "label": "Class",
@@ -53,32 +49,538 @@
     ]
   },
   "thresholds_file": "policy.json",
-  "release": {
-    "project": "fraud-risk-ops-platform",
-    "version": "0.1.0",
-    "purpose": "ops_platform_reference_artifact",
-    "runtime_policy": "fail_closed_on_artifact_runtime_mismatch"
+  "split_policy": {
+    "train_fraction": 0.7,
+    "calibration_fraction": 0.15,
+    "holdout_test_fraction": 0.15,
+    "threshold_selection": "calibration",
+    "reported_metrics": "holdout_test"
+  },
+  "models": {
+    "random_forest": {
+      "file": "rf_calibrated.joblib",
+      "pipeline_file": "rf_pipe.joblib"
+    },
+    "xgboost": {
+      "file": "xgb_calibrated.joblib",
+      "pipeline_file": "xgb_pipe.joblib"
+    }
   },
   "metrics": {
-    "note": "Packaged reference artifacts are included for reproducible app review. Operational model quality should be regenerated with scripts/train.py, which selects thresholds on a calibration split and reports metrics on a separate holdout test split.",
-    "status": "reference_artifact_not_operational_benchmark",
-    "training_script_contract": "train -> calibration/threshold_selection -> holdout_test/reporting"
+    "note": "Thresholds are selected on calibration data; reported metrics are computed on the holdout test split only.",
+    "holdout_test": {
+      "random_forest": {
+        "threshold": 0.0016451652802712843,
+        "tp": 63,
+        "fp": 25,
+        "tn": 42623,
+        "fn": 11,
+        "precision": 0.7159090909090909,
+        "recall": 0.8513513513513513,
+        "f1": 0.7777777777777778,
+        "roc_auc": 0.95579733151835,
+        "review_rate": 0.0020598286597069424,
+        "total_cost": 135.0,
+        "average_cost": 0.0031599644211413322
+      },
+      "xgboost": {
+        "threshold": 0.3197334110736847,
+        "tp": 60,
+        "fp": 8,
+        "tn": 42640,
+        "fn": 14,
+        "precision": 0.8823529411764706,
+        "recall": 0.8108108108108109,
+        "f1": 0.8450704225352113,
+        "roc_auc": 0.9675969406378804,
+        "review_rate": 0.0015916857825008192,
+        "total_cost": 148.0,
+        "average_cost": 0.0034642572913253125
+      }
+    },
+    "calibration_threshold_selection": {
+      "random_forest": {
+        "threshold": 0.0016451652802712843,
+        "tp": 62,
+        "fp": 29,
+        "tn": 42618,
+        "fn": 12,
+        "precision": 0.6813186813186813,
+        "recall": 0.8378378378378378,
+        "f1": 0.7515151515151515,
+        "roc_auc": 0.9629428007039562,
+        "review_rate": 0.002130099950843847,
+        "total_cost": 149.0,
+        "average_cost": 0.003487746073359706
+      },
+      "xgboost": {
+        "threshold": 0.3197334110736847,
+        "tp": 58,
+        "fp": 7,
+        "tn": 42640,
+        "fn": 16,
+        "precision": 0.8923076923076924,
+        "recall": 0.7837837837837838,
+        "f1": 0.8345323741007195,
+        "roc_auc": 0.9824554371239954,
+        "review_rate": 0.0015214999648884623,
+        "total_cost": 167.0,
+        "average_cost": 0.003909084525174972
+      }
+    }
   },
   "artifact_integrity": {
     "algorithm": "sha256",
     "expected_sha256": {
-      "rf_calibrated.joblib": "aec4e0672b4bd45648f636683c6e3974074c99f0c4122b16a0dde2aa2da416a0",
-      "rf_pipe.joblib": "d073cfad7ab0fc5252ac396d0f42b1686f3e76e457c002b83e449e89c9e2311f",
-      "xgb_calibrated.joblib": "3ffdf08ea6376ad6cf2710411356559a599ec5d4e58945307adbba45eb62b854",
-      "xgb_pipe.joblib": "70352d1808104d7d96b83d6ae18d3a3a2059e44836da58ebd8177c034f959052",
-      "policy.json": "cd40e3f24c10879d910d77fd61f7edde02433fc1b2a0653acb478acf049b6965",
-      "thresholds.json": "67d1f55093666a8a21f94d3bc4b0a014e040a240181de232ac2a3a655eaf21d4"
+      "rf_calibrated.joblib": "afa69fe77797cf1d2b9e58ea4a9fbe5a1528ef81a72becd62707b65606dda1a1",
+      "rf_pipe.joblib": "687d0920e8aab5cfe63aea74c072c535cf164634837d81d4d0745177af25d521",
+      "xgb_calibrated.joblib": "43dd190200f64958e6e988e758f2a2355d72762b0be79d898362f9569efd7b69",
+      "xgb_pipe.joblib": "786e72c36cb6ff99825509ce1f4530210706844662c344eac69b8d57aa1f38f4",
+      "policy.json": "c670912b8848b905c4b3f8ce4ecd9d046247866ff29a8483713d8b555ca3d0ef",
+      "thresholds.json": "48dfecebb6c9e07cbe0d64b5d3e3c34d94b501edaf424ac5537e1ba23b16574e"
     },
     "note": "Readiness validates these expected checksums for model and policy artifacts. metadata.json stores the manifest and is reported separately."
   },
-  "split_policy": {
-    "packaged_artifacts": "reference-only historical artifacts",
-    "training_script": "separate train, calibration, and holdout test splits",
-    "reported_metrics": "holdout_test after regeneration"
+  "training": {
+    "seed": 42,
+    "code_baseline": "3a2aba005ac88d686d2b4f51881530d351edc1a9",
+    "tracking_enabled": false,
+    "dataset": {
+      "source": "mlg-ulb/creditcardfraud",
+      "version": 3,
+      "provenance": "Exact archive SHA-256 match against HTTPS download from official Kaggle dataset API",
+      "archive_sha256": "a0360ce715992212e9ac72d8ccdca97f4be87dc1fdf2bed011358f7ab409a28a",
+      "csv_sha256": "76274b691b16a6c49d3f159c883398e03ccd6d1ee12d9d8ee38f4b4b98551a89",
+      "rows": 284807,
+      "class_counts": {
+        "0": 284315,
+        "1": 492
+      }
+    },
+    "splits": {
+      "train": {
+        "rows": 199364,
+        "positive": 344,
+        "negative": 199020,
+        "index_sha256": "2ce7f087f0a10180b9815ecaae5de058f2e5ed2d49c3acb7b6e40c76d184d1f5"
+      },
+      "calibration": {
+        "rows": 42721,
+        "positive": 74,
+        "negative": 42647,
+        "index_sha256": "4f8b049e4037e5ed3aaff4db8794ee2f0878dc0d8463fe54389cd85584d88992"
+      },
+      "holdout": {
+        "rows": 42722,
+        "positive": 74,
+        "negative": 42648,
+        "index_sha256": "4aa26dc2ac6df80e8c1ad1390abd1a9218c5a681a682ae2c84684eec0307e9aa"
+      }
+    },
+    "versions": {
+      "scikit-learn": "1.5.2",
+      "xgboost": "3.0.2",
+      "numpy": "1.26.4",
+      "scipy": "1.11.4",
+      "joblib": "1.4.2",
+      "pandas": "2.2.3"
+    },
+    "cost_fp": 1,
+    "cost_fn": 10,
+    "model_fit_cost_arguments": {
+      "cost_fp": 5,
+      "cost_fn": 500,
+      "note": "Original script arguments only affect threshold selection/evaluation, not estimator fitting or sigmoid calibration."
+    },
+    "threshold_selection_revision": {
+      "source_commit": "0277e2d9a6f5d194b08b1fb253c36e39869579ed",
+      "models_retrained": false,
+      "split": "original calibration split",
+      "cost_fp": 1,
+      "cost_fn": 10
+    }
+  },
+  "independent_evaluation": {
+    "dataset_csv_sha256": "76274b691b16a6c49d3f159c883398e03ccd6d1ee12d9d8ee38f4b4b98551a89",
+    "seed": 42,
+    "cost_fp": 1,
+    "cost_fn": 10,
+    "splits": {
+      "train": {
+        "rows": 199364,
+        "positive": 344,
+        "negative": 199020,
+        "index_sha256": "2ce7f087f0a10180b9815ecaae5de058f2e5ed2d49c3acb7b6e40c76d184d1f5"
+      },
+      "calibration": {
+        "rows": 42721,
+        "positive": 74,
+        "negative": 42647,
+        "index_sha256": "4f8b049e4037e5ed3aaff4db8794ee2f0878dc0d8463fe54389cd85584d88992"
+      },
+      "holdout": {
+        "rows": 42722,
+        "positive": 74,
+        "negative": 42648,
+        "index_sha256": "4aa26dc2ac6df80e8c1ad1390abd1a9218c5a681a682ae2c84684eec0307e9aa"
+      }
+    },
+    "models": {
+      "rf": {
+        "holdout": {
+          "roc_auc": 0.95579733151835,
+          "average_precision": 0.8219691343292652,
+          "precision": 0.7159090909090909,
+          "recall": 0.8513513513513513,
+          "f1": 0.7777777777777778,
+          "confusion_matrix": [
+            [
+              42623,
+              25
+            ],
+            [
+              11,
+              63
+            ]
+          ],
+          "brier": 0.00043969481378966014,
+          "log_loss": 0.003259377926572946,
+          "ece_10_equal_width": 0.00019970171081167774,
+          "review_rate": 0.0020598286597069424,
+          "total_cost": 135,
+          "threshold": 0.0016451652802712843,
+          "average_cost": 0.0031599644211413322
+        },
+        "uncalibrated_holdout": {
+          "roc_auc": 0.95579733151835,
+          "average_precision": 0.8219691343292652,
+          "precision": 0.035997882477501325,
+          "recall": 0.918918918918919,
+          "f1": 0.06928171166581763,
+          "confusion_matrix": [
+            [
+              40827,
+              1821
+            ],
+            [
+              6,
+              68
+            ]
+          ],
+          "brier": 0.00045492382275070354,
+          "log_loss": 0.006659266549043736,
+          "ece_10_equal_width": 0.00025396751088432195,
+          "review_rate": 0.044216094752118344,
+          "total_cost": 1881,
+          "threshold": 0.0016451652802712843
+        },
+        "calibration_bootstrap_threshold_q025_q50_q975": [
+          0.0016451652802712843,
+          0.003440393323615217,
+          0.10965628072073792
+        ],
+        "legacy_threshold_comparison_only": 0.0534831589433206,
+        "holdout_by_policy": {
+          "strict": {
+            "roc_auc": 0.95579733151835,
+            "average_precision": 0.8219691343292652,
+            "precision": 0.9636363636363636,
+            "recall": 0.7162162162162162,
+            "f1": 0.8217054263565892,
+            "confusion_matrix": [
+              [
+                42646,
+                2
+              ],
+              [
+                21,
+                53
+              ]
+            ],
+            "brier": 0.00043969481378966014,
+            "log_loss": 0.003259377926572946,
+            "ece_10_equal_width": 0.00019970171081167774,
+            "review_rate": 0.001287392912316839,
+            "total_cost": 212,
+            "threshold": 0.9
+          },
+          "balanced": {
+            "roc_auc": 0.95579733151835,
+            "average_precision": 0.8219691343292652,
+            "precision": 0.9642857142857143,
+            "recall": 0.7297297297297297,
+            "f1": 0.8307692307692308,
+            "confusion_matrix": [
+              [
+                42646,
+                2
+              ],
+              [
+                20,
+                54
+              ]
+            ],
+            "brier": 0.00043969481378966014,
+            "log_loss": 0.003259377926572946,
+            "ece_10_equal_width": 0.00019970171081167774,
+            "review_rate": 0.0013108000561771452,
+            "total_cost": 202,
+            "threshold": 0.65
+          },
+          "min_cost": {
+            "roc_auc": 0.95579733151835,
+            "average_precision": 0.8219691343292652,
+            "precision": 0.7159090909090909,
+            "recall": 0.8513513513513513,
+            "f1": 0.7777777777777778,
+            "confusion_matrix": [
+              [
+                42623,
+                25
+              ],
+              [
+                11,
+                63
+              ]
+            ],
+            "brier": 0.00043969481378966014,
+            "log_loss": 0.003259377926572946,
+            "ece_10_equal_width": 0.00019970171081167774,
+            "review_rate": 0.0020598286597069424,
+            "total_cost": 135,
+            "threshold": 0.0016451652802712843
+          },
+          "lenient": {
+            "roc_auc": 0.95579733151835,
+            "average_precision": 0.8219691343292652,
+            "precision": 0.9672131147540983,
+            "recall": 0.7972972972972973,
+            "f1": 0.8740740740740741,
+            "confusion_matrix": [
+              [
+                42646,
+                2
+              ],
+              [
+                15,
+                59
+              ]
+            ],
+            "brier": 0.00043969481378966014,
+            "log_loss": 0.003259377926572946,
+            "ece_10_equal_width": 0.00019970171081167774,
+            "review_rate": 0.0014278357754786762,
+            "total_cost": 152,
+            "threshold": 0.2
+          }
+        },
+        "constant_training_prevalence_baseline": {
+          "brier": 0.00172912842012834,
+          "log_loss": 0.01274421448007489,
+          "all_approve_cost": 740
+        },
+        "reviewed_0277e2d_policy_at_restored_costs": {
+          "roc_auc": 0.95579733151835,
+          "average_precision": 0.8219691343292652,
+          "precision": 0.7159090909090909,
+          "recall": 0.8513513513513513,
+          "f1": 0.7777777777777778,
+          "confusion_matrix": [
+            [
+              42623,
+              25
+            ],
+            [
+              11,
+              63
+            ]
+          ],
+          "brier": 0.00043969481378966014,
+          "log_loss": 0.003259377926572946,
+          "ece_10_equal_width": 0.00019970171081167774,
+          "review_rate": 0.0020598286597069424,
+          "total_cost": 135,
+          "threshold": 0.0016451652802712843
+        }
+      },
+      "xgb": {
+        "holdout": {
+          "roc_auc": 0.9675969406378804,
+          "average_precision": 0.8425614340466776,
+          "precision": 0.8823529411764706,
+          "recall": 0.8108108108108109,
+          "f1": 0.8450704225352113,
+          "confusion_matrix": [
+            [
+              42640,
+              8
+            ],
+            [
+              14,
+              60
+            ]
+          ],
+          "brier": 0.0004590778186642701,
+          "log_loss": 0.0032423485421209423,
+          "ece_10_equal_width": 0.0002267550214489888,
+          "review_rate": 0.0015916857825008192,
+          "total_cost": 148,
+          "threshold": 0.3197334110736847,
+          "average_cost": 0.0034642572913253125
+        },
+        "uncalibrated_holdout": {
+          "roc_auc": 0.9676737795758618,
+          "average_precision": 0.8425620253344385,
+          "precision": 0.8243243243243243,
+          "recall": 0.8243243243243243,
+          "f1": 0.8243243243243243,
+          "confusion_matrix": [
+            [
+              42635,
+              13
+            ],
+            [
+              13,
+              61
+            ]
+          ],
+          "brier": 0.0004885683337505061,
+          "log_loss": 0.003439402689012488,
+          "ece_10_equal_width": 0.0002833883333186723,
+          "review_rate": 0.0017321286456626562,
+          "total_cost": 143,
+          "threshold": 0.3197334110736847
+        },
+        "calibration_bootstrap_threshold_q025_q50_q975": [
+          0.0005568324704654515,
+          0.3197334110736847,
+          0.6889373660087585
+        ],
+        "legacy_threshold_comparison_only": 0.22812701761722565,
+        "holdout_by_policy": {
+          "strict": {
+            "roc_auc": 0.9675969406378804,
+            "average_precision": 0.8425614340466776,
+            "precision": 0.9655172413793104,
+            "recall": 0.7567567567567568,
+            "f1": 0.8484848484848485,
+            "confusion_matrix": [
+              [
+                42646,
+                2
+              ],
+              [
+                18,
+                56
+              ]
+            ],
+            "brier": 0.0004590778186642701,
+            "log_loss": 0.0032423485421209423,
+            "ece_10_equal_width": 0.0002267550214489888,
+            "review_rate": 0.0013576143438977575,
+            "total_cost": 182,
+            "threshold": 0.9
+          },
+          "balanced": {
+            "roc_auc": 0.9675969406378804,
+            "average_precision": 0.8425614340466776,
+            "precision": 0.9076923076923077,
+            "recall": 0.7972972972972973,
+            "f1": 0.8489208633093526,
+            "confusion_matrix": [
+              [
+                42642,
+                6
+              ],
+              [
+                15,
+                59
+              ]
+            ],
+            "brier": 0.0004590778186642701,
+            "log_loss": 0.0032423485421209423,
+            "ece_10_equal_width": 0.0002267550214489888,
+            "review_rate": 0.0015214643509199007,
+            "total_cost": 156,
+            "threshold": 0.75
+          },
+          "min_cost": {
+            "roc_auc": 0.9675969406378804,
+            "average_precision": 0.8425614340466776,
+            "precision": 0.8823529411764706,
+            "recall": 0.8108108108108109,
+            "f1": 0.8450704225352113,
+            "confusion_matrix": [
+              [
+                42640,
+                8
+              ],
+              [
+                14,
+                60
+              ]
+            ],
+            "brier": 0.0004590778186642701,
+            "log_loss": 0.0032423485421209423,
+            "ece_10_equal_width": 0.0002267550214489888,
+            "review_rate": 0.0015916857825008192,
+            "total_cost": 148,
+            "threshold": 0.3197334110736847
+          },
+          "lenient": {
+            "roc_auc": 0.9675969406378804,
+            "average_precision": 0.8425614340466776,
+            "precision": 0.8823529411764706,
+            "recall": 0.8108108108108109,
+            "f1": 0.8450704225352113,
+            "confusion_matrix": [
+              [
+                42640,
+                8
+              ],
+              [
+                14,
+                60
+              ]
+            ],
+            "brier": 0.0004590778186642701,
+            "log_loss": 0.0032423485421209423,
+            "ece_10_equal_width": 0.0002267550214489888,
+            "review_rate": 0.0015916857825008192,
+            "total_cost": 148,
+            "threshold": 0.2
+          }
+        },
+        "constant_training_prevalence_baseline": {
+          "brier": 0.00172912842012834,
+          "log_loss": 0.01274421448007489,
+          "all_approve_cost": 740
+        },
+        "reviewed_0277e2d_policy_at_restored_costs": {
+          "roc_auc": 0.9675969406378804,
+          "average_precision": 0.8425614340466776,
+          "precision": 0.5,
+          "recall": 0.8513513513513513,
+          "f1": 0.63,
+          "confusion_matrix": [
+            [
+              42585,
+              63
+            ],
+            [
+              11,
+              63
+            ]
+          ],
+          "brier": 0.0004590778186642701,
+          "log_loss": 0.0032423485421209423,
+          "ece_10_equal_width": 0.0002267550214489888,
+          "review_rate": 0.0029493001263985767,
+          "total_cost": 173,
+          "threshold": 0.0005568324704654515
+        }
+      }
+    },
+    "historical_comparison": "Legacy training data/splits cannot be verified; no performance parity claim."
   }
 }

@@ -1,5 +1,5 @@
 {
-  "source_commit": "ca19944f4b4a578ac738005bf33ba168011d256f",
+  "source_commit": "3a2aba005ac88d686d2b4f51881530d351edc1a9",
   "features": [
     "Time",
     "V1",
@@ -164,25 +164,28 @@
   ],
   "probabilities": {
     "rf": [
-      0.000333001010712977,
-      0.000333001010712977,
-      0.000333001010712977,
-      0.0003700335278102649
+      0.00042453140357249337,
+      0.00042453140357249337,
+      0.00048019283043206735,
+      0.00048019283043206735
     ],
     "xgb": [
-      0.00030400289688259363,
-      0.0003040185256395489,
-      0.00030405184952542186,
-      0.000304077664623037
+      0.0003752267512027174,
+      0.00037459362647496164,
+      0.0003745422000065446,
+      0.00037482724292203784
     ]
   },
   "sha256": {
-    "metadata.json": "b3196f38bb2a3f754d6ec016363e5a7d3fe78e6fd6d8e1e6b25c11d4b4f5cc57",
-    "policy.json": "cd40e3f24c10879d910d77fd61f7edde02433fc1b2a0653acb478acf049b6965",
-    "rf_calibrated.joblib": "aec4e0672b4bd45648f636683c6e3974074c99f0c4122b16a0dde2aa2da416a0",
-    "rf_pipe.joblib": "d073cfad7ab0fc5252ac396d0f42b1686f3e76e457c002b83e449e89c9e2311f",
-    "thresholds.json": "67d1f55093666a8a21f94d3bc4b0a014e040a240181de232ac2a3a655eaf21d4",
-    "xgb_calibrated.joblib": "3ffdf08ea6376ad6cf2710411356559a599ec5d4e58945307adbba45eb62b854",
-    "xgb_pipe.joblib": "70352d1808104d7d96b83d6ae18d3a3a2059e44836da58ebd8177c034f959052"
-  }
+    "metadata.json": "573a0077b7d8f5132eaa2eb2bb71213b6b39059ea019c1447ab5616bc08a02fd",
+    "policy.json": "c670912b8848b905c4b3f8ce4ecd9d046247866ff29a8483713d8b555ca3d0ef",
+    "rf_calibrated.joblib": "afa69fe77797cf1d2b9e58ea4a9fbe5a1528ef81a72becd62707b65606dda1a1",
+    "rf_pipe.joblib": "687d0920e8aab5cfe63aea74c072c535cf164634837d81d4d0745177af25d521",
+    "thresholds.json": "48dfecebb6c9e07cbe0d64b5d3e3c34d94b501edaf424ac5537e1ba23b16574e",
+    "xgb_calibrated.joblib": "43dd190200f64958e6e988e758f2a2355d72762b0be79d898362f9569efd7b69",
+    "xgb_pipe.joblib": "786e72c36cb6ff99825509ce1f4530210706844662c344eac69b8d57aa1f38f4"
+  },
+  "release": "fraud-risk-ops-v0.1.0-sklearn1.5.2",
+  "witness_validation": "Native model output independently checked with sigmoid coefficients and uncalibrated estimator probabilities; probe rows remain synthetic and contain no training data.",
+  "policy_revision": "fraud-risk-ops-v0.1.0-sklearn1.5.2-policy1-10"
 }

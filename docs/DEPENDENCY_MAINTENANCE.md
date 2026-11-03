@@ -1,5 +1,9 @@
 # Dependency maintenance
 
+This document records the earlier maintenance baseline. The subsequent isolated
+[Issue #90 migration](SKLEARN_MIGRATION.md) upgrades scikit-learn and regenerates
+the reference artifacts; its evidence supersedes the historical exception below.
+
 ## Scope
 
 The local maintenance set incorporates the intended updates from Dependabot #83–#87: pytest 9.0.3, Pillow 13.0.0, FastAPI 0.162.0, Starlette 1.10.0, pre-commit 4.7.0, and MLflow 3.17.2. Streamlit 1.66.1 permits Pillow 13; 1.54.0 requires Pillow <13. Python remains 3.11 and all six serialized-model/data dependency pins remain unchanged. Packaged artifacts must not be regenerated during dependency maintenance.

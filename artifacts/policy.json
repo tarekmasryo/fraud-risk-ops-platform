@@ -1,5 +1,6 @@
 {
-  "policy_version": "fraud-risk-ops-v0.1.0",
+  "policy_version": "fraud-risk-ops-v0.1.0-sklearn1.5.2-policy1-10",
+  "release_stage": "public_reference",
   "default_model": "rf",
   "default_policy": "min_cost",
   "costs": {
@@ -33,10 +34,10 @@
     },
     "min_cost": {
       "thresholds": {
-        "rf": 0.0534831589433206,
-        "xgb": 0.22812701761722565
+        "rf": 0.0016451652802712843,
+        "xgb": 0.3197334110736847
       },
-      "description": "Cost-aware packaged reference operating point. Regenerate with scripts/train.py to refresh calibration-selected thresholds and holdout-test metrics."
+      "description": "Cost-minimizing operating point selected on the calibration split."
     },
     "lenient": {
       "thresholds": {
@@ -46,7 +47,6 @@
       "description": "Increase fraud capture with higher review load."
     }
   },
-  "release_stage": "public_reference",
   "decision_contract": {
     "approve": "risk_score below the selected review threshold",
     "review": "risk_score at or above the selected review threshold",

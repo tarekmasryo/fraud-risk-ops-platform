@@ -1,11 +1,1 @@
-[
-  {
-    "id": "CVE-2024-5206",
-    "package": "scikit-learn",
-    "version": "1.4.2",
-    "expires": "2026-12-02",
-    "owner": "Repository maintainer",
-    "reason": "TfidfVectorizer stop_words_ disclosure; numeric RF/XGBoost training and packaged estimators do not use text vectorizers. Preserve the serialized artifact runtime pending a coordinated ML upgrade.",
-    "evidence": "SECURITY.md#temporary-vulnerability-exception"
-  }
-]
+[]

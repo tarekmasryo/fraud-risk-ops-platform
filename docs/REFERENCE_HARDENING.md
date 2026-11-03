@@ -123,3 +123,10 @@ suite passed with 126 tests, 6 existing warnings and 80.47% coverage against the
 75% gate. Ruff lint/format and `git diff --check` passed. All seven packaged
 artifact hashes remain unchanged. Docker execution and actual browser acceptance
 remain NOT_RUN; the CI and browser gates above still apply.
+
+## Subsequent model runtime migration
+
+The later Issue #90 migration replaces the reference artifacts and pins scikit-learn
+to 1.5.2. The integrity enforcement and explicit Docker context allowlist remain
+unchanged. See [SKLEARN_MIGRATION.md](SKLEARN_MIGRATION.md) for current evidence;
+the validation results above describe the earlier hardening baseline.
