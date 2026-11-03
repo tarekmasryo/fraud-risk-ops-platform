@@ -1,6 +1,9 @@
 # Changelog
 
-## Unreleased — scikit-learn security and reference model migration
+## Unreleased â€” scikit-learn security and reference model migration
+
+- Restore shipped FP/FN costs (1/10), select min-cost thresholds only on the original calibration split without refitting models, and retain public policy metadata.
+- Align Streamlit Local/API effective thresholds and add real-model policy compatibility regression coverage.
 
 - Upgrade scikit-learn to 1.5.2 and regenerate the coherent reference model release from independently verified Kaggle dataset version 3.
 - Remove the CVE-2024-5206 exception after a no-exemption installed-environment audit.

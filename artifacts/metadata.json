@@ -80,22 +80,22 @@
         "f1": 0.7777777777777778,
         "roc_auc": 0.95579733151835,
         "review_rate": 0.0020598286597069424,
-        "total_cost": 5625.0,
-        "average_cost": 0.1316651842142222
+        "total_cost": 135.0,
+        "average_cost": 0.0031599644211413322
       },
       "xgboost": {
-        "threshold": 0.0005568324704654515,
-        "tp": 63,
-        "fp": 63,
-        "tn": 42585,
-        "fn": 11,
-        "precision": 0.5,
-        "recall": 0.8513513513513513,
-        "f1": 0.63,
+        "threshold": 0.3197334110736847,
+        "tp": 60,
+        "fp": 8,
+        "tn": 42640,
+        "fn": 14,
+        "precision": 0.8823529411764706,
+        "recall": 0.8108108108108109,
+        "f1": 0.8450704225352113,
         "roc_auc": 0.9675969406378804,
-        "review_rate": 0.0029493001263985767,
-        "total_cost": 5815.0,
-        "average_cost": 0.13611254154768035
+        "review_rate": 0.0015916857825008192,
+        "total_cost": 148.0,
+        "average_cost": 0.0034642572913253125
       }
     },
     "calibration_threshold_selection": {
@@ -110,22 +110,22 @@
         "f1": 0.7515151515151515,
         "roc_auc": 0.9629428007039562,
         "review_rate": 0.002130099950843847,
-        "total_cost": 6145.0,
-        "average_cost": 0.14384026591137847
+        "total_cost": 149.0,
+        "average_cost": 0.003487746073359706
       },
       "xgboost": {
-        "threshold": 0.0005568324704654515,
-        "tp": 64,
-        "fp": 79,
-        "tn": 42568,
-        "fn": 10,
-        "precision": 0.44755244755244755,
-        "recall": 0.8648648648648649,
-        "f1": 0.5898617511520737,
+        "threshold": 0.3197334110736847,
+        "tp": 58,
+        "fp": 7,
+        "tn": 42640,
+        "fn": 16,
+        "precision": 0.8923076923076924,
+        "recall": 0.7837837837837838,
+        "f1": 0.8345323741007195,
         "roc_auc": 0.9824554371239954,
-        "review_rate": 0.0033472999227546173,
-        "total_cost": 5395.0,
-        "average_cost": 0.12628449708574238
+        "review_rate": 0.0015214999648884623,
+        "total_cost": 167.0,
+        "average_cost": 0.003909084525174972
       }
     }
   },
@@ -136,8 +136,8 @@
       "rf_pipe.joblib": "687d0920e8aab5cfe63aea74c072c535cf164634837d81d4d0745177af25d521",
       "xgb_calibrated.joblib": "43dd190200f64958e6e988e758f2a2355d72762b0be79d898362f9569efd7b69",
       "xgb_pipe.joblib": "786e72c36cb6ff99825509ce1f4530210706844662c344eac69b8d57aa1f38f4",
-      "policy.json": "42db759331f2cedf1d15392777d1a2db28ae3496720ffc1f789fcc371fddc7c6",
-      "thresholds.json": "01d27c4a7a2db78c48c0eab4648e684ea19137ae930a7d21ea9a38ce058c713e"
+      "policy.json": "c670912b8848b905c4b3f8ce4ecd9d046247866ff29a8483713d8b555ca3d0ef",
+      "thresholds.json": "48dfecebb6c9e07cbe0d64b5d3e3c34d94b501edaf424ac5537e1ba23b16574e"
     },
     "note": "Readiness validates these expected checksums for model and policy artifacts. metadata.json stores the manifest and is reported separately."
   },
@@ -185,14 +185,26 @@
       "joblib": "1.4.2",
       "pandas": "2.2.3"
     },
-    "cost_fp": 5,
-    "cost_fn": 500
+    "cost_fp": 1,
+    "cost_fn": 10,
+    "model_fit_cost_arguments": {
+      "cost_fp": 5,
+      "cost_fn": 500,
+      "note": "Original script arguments only affect threshold selection/evaluation, not estimator fitting or sigmoid calibration."
+    },
+    "threshold_selection_revision": {
+      "source_commit": "0277e2d9a6f5d194b08b1fb253c36e39869579ed",
+      "models_retrained": false,
+      "split": "original calibration split",
+      "cost_fp": 1,
+      "cost_fn": 10
+    }
   },
   "independent_evaluation": {
     "dataset_csv_sha256": "76274b691b16a6c49d3f159c883398e03ccd6d1ee12d9d8ee38f4b4b98551a89",
     "seed": 42,
-    "cost_fp": 5,
-    "cost_fn": 500,
+    "cost_fp": 1,
+    "cost_fn": 10,
     "splits": {
       "train": {
         "rows": 199364,
@@ -235,8 +247,9 @@
           "log_loss": 0.003259377926572946,
           "ece_10_equal_width": 0.00019970171081167774,
           "review_rate": 0.0020598286597069424,
-          "total_cost": 5625,
-          "threshold": 0.0016451652802712843
+          "total_cost": 135,
+          "threshold": 0.0016451652802712843,
+          "average_cost": 0.0031599644211413322
         },
         "uncalibrated_holdout": {
           "roc_auc": 0.95579733151835,
@@ -258,13 +271,13 @@
           "log_loss": 0.006659266549043736,
           "ece_10_equal_width": 0.00025396751088432195,
           "review_rate": 0.044216094752118344,
-          "total_cost": 12105,
+          "total_cost": 1881,
           "threshold": 0.0016451652802712843
         },
         "calibration_bootstrap_threshold_q025_q50_q975": [
-          0.00048019283043206735,
           0.0016451652802712843,
-          0.016850577559814426
+          0.003440393323615217,
+          0.10965628072073792
         ],
         "legacy_threshold_comparison_only": 0.0534831589433206,
         "holdout_by_policy": {
@@ -288,7 +301,7 @@
             "log_loss": 0.003259377926572946,
             "ece_10_equal_width": 0.00019970171081167774,
             "review_rate": 0.001287392912316839,
-            "total_cost": 10510,
+            "total_cost": 212,
             "threshold": 0.9
           },
           "balanced": {
@@ -311,7 +324,7 @@
             "log_loss": 0.003259377926572946,
             "ece_10_equal_width": 0.00019970171081167774,
             "review_rate": 0.0013108000561771452,
-            "total_cost": 10010,
+            "total_cost": 202,
             "threshold": 0.65
           },
           "min_cost": {
@@ -334,7 +347,7 @@
             "log_loss": 0.003259377926572946,
             "ece_10_equal_width": 0.00019970171081167774,
             "review_rate": 0.0020598286597069424,
-            "total_cost": 5625,
+            "total_cost": 135,
             "threshold": 0.0016451652802712843
           },
           "lenient": {
@@ -357,67 +370,91 @@
             "log_loss": 0.003259377926572946,
             "ece_10_equal_width": 0.00019970171081167774,
             "review_rate": 0.0014278357754786762,
-            "total_cost": 7510,
+            "total_cost": 152,
             "threshold": 0.2
           }
         },
         "constant_training_prevalence_baseline": {
           "brier": 0.00172912842012834,
           "log_loss": 0.01274421448007489,
-          "all_approve_cost": 37000
-        }
-      },
-      "xgb": {
-        "holdout": {
-          "roc_auc": 0.9675969406378804,
-          "average_precision": 0.8425614340466776,
-          "precision": 0.5,
+          "all_approve_cost": 740
+        },
+        "reviewed_0277e2d_policy_at_restored_costs": {
+          "roc_auc": 0.95579733151835,
+          "average_precision": 0.8219691343292652,
+          "precision": 0.7159090909090909,
           "recall": 0.8513513513513513,
-          "f1": 0.63,
+          "f1": 0.7777777777777778,
           "confusion_matrix": [
             [
-              42585,
-              63
+              42623,
+              25
             ],
             [
               11,
               63
             ]
           ],
+          "brier": 0.00043969481378966014,
+          "log_loss": 0.003259377926572946,
+          "ece_10_equal_width": 0.00019970171081167774,
+          "review_rate": 0.0020598286597069424,
+          "total_cost": 135,
+          "threshold": 0.0016451652802712843
+        }
+      },
+      "xgb": {
+        "holdout": {
+          "roc_auc": 0.9675969406378804,
+          "average_precision": 0.8425614340466776,
+          "precision": 0.8823529411764706,
+          "recall": 0.8108108108108109,
+          "f1": 0.8450704225352113,
+          "confusion_matrix": [
+            [
+              42640,
+              8
+            ],
+            [
+              14,
+              60
+            ]
+          ],
           "brier": 0.0004590778186642701,
           "log_loss": 0.0032423485421209423,
           "ece_10_equal_width": 0.0002267550214489888,
-          "review_rate": 0.0029493001263985767,
-          "total_cost": 5815,
-          "threshold": 0.0005568324704654515
+          "review_rate": 0.0015916857825008192,
+          "total_cost": 148,
+          "threshold": 0.3197334110736847,
+          "average_cost": 0.0034642572913253125
         },
         "uncalibrated_holdout": {
           "roc_auc": 0.9676737795758618,
           "average_precision": 0.8425620253344385,
-          "precision": 0.03596730245231607,
-          "recall": 0.8918918918918919,
-          "f1": 0.06914614981665794,
+          "precision": 0.8243243243243243,
+          "recall": 0.8243243243243243,
+          "f1": 0.8243243243243243,
           "confusion_matrix": [
             [
-              40879,
-              1769
+              42635,
+              13
             ],
             [
-              8,
-              66
+              13,
+              61
             ]
           ],
           "brier": 0.0004885683337505061,
           "log_loss": 0.003439402689012488,
           "ece_10_equal_width": 0.0002833883333186723,
-          "review_rate": 0.042952108983661814,
-          "total_cost": 12845,
-          "threshold": 0.0005568324704654515
+          "review_rate": 0.0017321286456626562,
+          "total_cost": 143,
+          "threshold": 0.3197334110736847
         },
         "calibration_bootstrap_threshold_q025_q50_q975": [
           0.0005568324704654515,
-          0.0005568324704654515,
-          0.0008002998074516654
+          0.3197334110736847,
+          0.6889373660087585
         ],
         "legacy_threshold_comparison_only": 0.22812701761722565,
         "holdout_by_policy": {
@@ -441,7 +478,7 @@
             "log_loss": 0.0032423485421209423,
             "ece_10_equal_width": 0.0002267550214489888,
             "review_rate": 0.0013576143438977575,
-            "total_cost": 9010,
+            "total_cost": 182,
             "threshold": 0.9
           },
           "balanced": {
@@ -464,31 +501,31 @@
             "log_loss": 0.0032423485421209423,
             "ece_10_equal_width": 0.0002267550214489888,
             "review_rate": 0.0015214643509199007,
-            "total_cost": 7530,
+            "total_cost": 156,
             "threshold": 0.75
           },
           "min_cost": {
             "roc_auc": 0.9675969406378804,
             "average_precision": 0.8425614340466776,
-            "precision": 0.5,
-            "recall": 0.8513513513513513,
-            "f1": 0.63,
+            "precision": 0.8823529411764706,
+            "recall": 0.8108108108108109,
+            "f1": 0.8450704225352113,
             "confusion_matrix": [
               [
-                42585,
-                63
+                42640,
+                8
               ],
               [
-                11,
-                63
+                14,
+                60
               ]
             ],
             "brier": 0.0004590778186642701,
             "log_loss": 0.0032423485421209423,
             "ece_10_equal_width": 0.0002267550214489888,
-            "review_rate": 0.0029493001263985767,
-            "total_cost": 5815,
-            "threshold": 0.0005568324704654515
+            "review_rate": 0.0015916857825008192,
+            "total_cost": 148,
+            "threshold": 0.3197334110736847
           },
           "lenient": {
             "roc_auc": 0.9675969406378804,
@@ -510,14 +547,37 @@
             "log_loss": 0.0032423485421209423,
             "ece_10_equal_width": 0.0002267550214489888,
             "review_rate": 0.0015916857825008192,
-            "total_cost": 7040,
+            "total_cost": 148,
             "threshold": 0.2
           }
         },
         "constant_training_prevalence_baseline": {
           "brier": 0.00172912842012834,
           "log_loss": 0.01274421448007489,
-          "all_approve_cost": 37000
+          "all_approve_cost": 740
+        },
+        "reviewed_0277e2d_policy_at_restored_costs": {
+          "roc_auc": 0.9675969406378804,
+          "average_precision": 0.8425614340466776,
+          "precision": 0.5,
+          "recall": 0.8513513513513513,
+          "f1": 0.63,
+          "confusion_matrix": [
+            [
+              42585,
+              63
+            ],
+            [
+              11,
+              63
+            ]
+          ],
+          "brier": 0.0004590778186642701,
+          "log_loss": 0.0032423485421209423,
+          "ece_10_equal_width": 0.0002267550214489888,
+          "review_rate": 0.0029493001263985767,
+          "total_cost": 173,
+          "threshold": 0.0005568324704654515
         }
       }
     },

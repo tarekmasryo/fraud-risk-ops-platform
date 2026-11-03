@@ -22,7 +22,7 @@ except ModuleNotFoundError:  # pragma: no cover - keeps non-UI unit tests lightw
 
     st = _StreamlitCacheFallback()
 
-from fraud_dashboard.core.artifacts import load_bundle, load_thresholds
+from fraud_dashboard.core.artifacts import load_bundle
 from fraud_dashboard.core.config import get_settings
 from fraud_dashboard.core.predict import predict_proba
 from fraud_dashboard.ui.api_client import ApiConfig, fetch_metadata, ping_ok, predict_batch
@@ -58,11 +58,6 @@ def _local_bundle() -> dict[str, Any]:
     return load_bundle()
 
 
-@st.cache_resource(show_spinner=False)
-def _local_thresholds() -> dict[str, Any]:
-    return load_thresholds()
-
-
 class LocalPredictor:
     def __init__(self) -> None:
         self._bundle = _local_bundle()
@@ -74,7 +69,7 @@ class LocalPredictor:
         return list(self._bundle.get("available_models", []))
 
     def thresholds(self) -> dict[str, Any]:
-        return _local_thresholds()
+        return dict(self._bundle.get("thresholds", {}))
 
     def schema_features(self) -> list[str]:
         schema = self._bundle.get("schema", {})

@@ -177,14 +177,15 @@
     ]
   },
   "sha256": {
-    "metadata.json": "277e35bc7d027bd4e24f49d0bf6c54285723f6efec10c8acc5d3c4deb57461f9",
-    "policy.json": "42db759331f2cedf1d15392777d1a2db28ae3496720ffc1f789fcc371fddc7c6",
+    "metadata.json": "573a0077b7d8f5132eaa2eb2bb71213b6b39059ea019c1447ab5616bc08a02fd",
+    "policy.json": "c670912b8848b905c4b3f8ce4ecd9d046247866ff29a8483713d8b555ca3d0ef",
     "rf_calibrated.joblib": "afa69fe77797cf1d2b9e58ea4a9fbe5a1528ef81a72becd62707b65606dda1a1",
     "rf_pipe.joblib": "687d0920e8aab5cfe63aea74c072c535cf164634837d81d4d0745177af25d521",
-    "thresholds.json": "01d27c4a7a2db78c48c0eab4648e684ea19137ae930a7d21ea9a38ce058c713e",
+    "thresholds.json": "48dfecebb6c9e07cbe0d64b5d3e3c34d94b501edaf424ac5537e1ba23b16574e",
     "xgb_calibrated.joblib": "43dd190200f64958e6e988e758f2a2355d72762b0be79d898362f9569efd7b69",
     "xgb_pipe.joblib": "786e72c36cb6ff99825509ce1f4530210706844662c344eac69b8d57aa1f38f4"
   },
   "release": "fraud-risk-ops-v0.1.0-sklearn1.5.2",
-  "witness_validation": "Native model output independently checked with sigmoid coefficients and uncalibrated estimator probabilities; probe rows remain synthetic and contain no training data."
+  "witness_validation": "Native model output independently checked with sigmoid coefficients and uncalibrated estimator probabilities; probe rows remain synthetic and contain no training data.",
+  "policy_revision": "fraud-risk-ops-v0.1.0-sklearn1.5.2-policy1-10"
 }

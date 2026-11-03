@@ -1,11 +1,11 @@
 {
-  "policy_version": "fraud-risk-ops-v0.1.0-sklearn1.5.2",
+  "policy_version": "fraud-risk-ops-v0.1.0-sklearn1.5.2-policy1-10",
   "release_stage": "public_reference",
   "default_model": "rf",
   "default_policy": "min_cost",
   "costs": {
-    "false_positive": 5.0,
-    "false_negative": 500.0
+    "false_positive": 1.0,
+    "false_negative": 10.0
   },
   "models": {
     "rf": {
@@ -35,7 +35,7 @@
     "min_cost": {
       "thresholds": {
         "rf": 0.0016451652802712843,
-        "xgb": 0.0005568324704654515
+        "xgb": 0.3197334110736847
       },
       "description": "Cost-minimizing operating point selected on the calibration split."
     },
@@ -46,5 +46,33 @@
       },
       "description": "Increase fraud capture with higher review load."
     }
-  }
+  },
+  "decision_contract": {
+    "approve": "risk_score below the selected review threshold",
+    "review": "risk_score at or above the selected review threshold",
+    "block": "reserved for downstream case-management integration"
+  },
+  "risk_bands": [
+    {
+      "name": "low",
+      "min": 0.0,
+      "max": 0.2
+    },
+    {
+      "name": "medium",
+      "min": 0.2,
+      "max": 0.65
+    },
+    {
+      "name": "high",
+      "min": 0.65,
+      "max": 0.9
+    },
+    {
+      "name": "critical",
+      "min": 0.9,
+      "max": 1.0
+    }
+  ],
+  "metrics_boundary": "Packaged thresholds are suitable for demo/review workflows; operational metrics should be regenerated on the target dataset with a separate holdout test split."
 }

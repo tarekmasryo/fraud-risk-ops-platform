@@ -21,10 +21,10 @@ Candidate Python 3.11.9, scikit-learn 1.5.2, XGBoost 3.0.2, NumPy 1.26.4, SciPy 
 Training uses the unchanged `scripts/train.py` at baseline `3a2aba005ac88d686d2b4f51881530d351edc1a9`, directly reading the single-CSV ZIP with pandas. RF uses 300 trees; XGB uses 600 trees and the existing parameters. No automatic MLflow tracking was enabled and existing experiment stores were untouched.
 
 ```powershell
-python scripts/train.py --data <verified-archive.zip> --out <new-staging-directory> --seed 42 --calibration-size 0.15 --test-size 0.15 --cost-fp 5 --cost-fn 500 --no-tracking
+python scripts/train.py --data <verified-archive.zip> --out <new-staging-directory> --seed 42 --calibration-size 0.15 --test-size 0.15 --cost-fp 1 --cost-fn 10 --no-tracking
 ```
 
-Use a new directory; never train directly into the packaged artifacts. The seven files were promoted only after independent evaluation. Release and policy identities are `fraud-risk-ops-v0.1.0-sklearn1.5.2`. Post-training JSON metadata adds the provenance, runtime, split fingerprints and independently computed metrics reported here. Model binaries are direct training outputs. Seeds and split hashes establish repeatability; bitwise equivalence across operating systems/BLAS implementations has not been established.
+Use a new directory; never train directly into the packaged artifacts. The seven files were promoted only after independent evaluation. The model release identity is `fraud-risk-ops-v0.1.0-sklearn1.5.2`; the corrected policy identity is `fraud-risk-ops-v0.1.0-sklearn1.5.2-policy1-10`. Post-training JSON metadata adds the provenance, runtime, split fingerprints and independently computed metrics reported here. Model binaries are direct training outputs. Seeds and split hashes establish repeatability; bitwise equivalence across operating systems/BLAS implementations has not been established.
 
 | Split | Rows | Non-fraud | Fraud |
 |---|---:|---:|---:|
@@ -34,37 +34,42 @@ Use a new directory; never train directly into the packaged artifacts. The seven
 
 Splits are stratified and index-disjoint. Split-order SHA-256 fingerprints are recorded in `metadata.json`. Thresholds and sigmoid calibration use only calibration data; no holdout-based tuning was performed.
 
-## Independent holdout evaluation
+## Independent holdout evaluation after policy review
 
-Evaluation reloaded the new staging models, reconstructed splits, calculated metrics independently of the training report, and confirmed the min-cost threshold with a sorted cumulative-count implementation. Review uses `p >= threshold`; FP cost is 5 and FN cost is 500.
+PR #92 review identified an unintended cost-contract change in commit `0277e2d`. This revision restores the shipped FP=1/FN=10 economics. Fitting RF/XGB and sigmoid calibrators does not depend on these costs: the four model binaries are byte-for-byte unchanged. No model training was repeated. The initial migration invocation used 5/500; that historical fact is retained in metadata, but the reproduction command above explicitly uses the restored 1/10 policy objective.
 
-| Metric (min-cost policy) | RF | XGB |
+The verified original archive and exact stratified split fingerprints were checked again. Thresholds were selected only on the original 42721-row calibration split (74 positives), using sorted cumulative counts and independently cross-checked against the existing training selector. Review uses `p >= threshold`; cost is `FP + 10*FN`. The unchanged 42722-row holdout (74 positives) was evaluated only after selection.
+
+| Metric (corrected min-cost policy) | RF | XGB |
 |---|---:|---:|
 | roc_auc | 0.9557973315 | 0.9675969406 |
 | average_precision | 0.8219691343 | 0.842561434 |
-| precision | 0.7159090909 | 0.5 |
-| recall | 0.8513513514 | 0.8513513514 |
-| f1 | 0.7777777778 | 0.63 |
+| precision | 0.7159090909 | 0.8823529412 |
+| recall | 0.8513513514 | 0.8108108108 |
+| f1 | 0.7777777778 | 0.8450704225 |
 | brier | 0.0004396948138 | 0.0004590778187 |
 | log_loss | 0.003259377927 | 0.003242348542 |
 | ece_10_equal_width | 0.0001997017108 | 0.0002267550214 |
-| review_rate | 0.00205982866 | 0.002949300126 |
-| total_cost | 5625 | 5815 |
-| threshold | 0.00164516528 | 0.0005568324705 |
+| review_rate | 0.00205982866 | 0.001591685783 |
+| total_cost | 135 | 148 |
+| average_cost | 0.003159964421 | 0.003464257291 |
+| threshold | 0.00164516528 | 0.3197334111 |
 
 RF confusion matrix `[[TN, FP], [FN, TP]]`: `[[42623, 25], [11, 63]]`.
-Uncalibrated Brier/log-loss: `0.0004549238228` / `0.006659266549`. Calibrated values improve both. Threshold bootstrap percentiles (2.5%, 50%, 97.5%; 100 calibration resamples, seed 42): `[0.00048019283043206735, 0.0016451652802712843, 0.016850577559814426]`.
+Under the same restored 1/10 costs, the reviewed commit's operating point cost `135` with precision/recall/F1 `0.715909/0.851351/0.777778` and review rate `0.00205983`. The corrected operating point costs `135`. These comparisons use the same new models and holdout, not historical models.
+Calibration-only bootstrap threshold percentiles (2.5%, 50%, 97.5%; 100 resamples, seed 42): `[0.0016451652802712843, 0.003440393323615217, 0.10965628072073792]`.
 
-XGB confusion matrix `[[TN, FP], [FN, TP]]`: `[[42585, 63], [11, 63]]`.
-Uncalibrated Brier/log-loss: `0.0004885683338` / `0.003439402689`. Calibrated values improve both. Threshold bootstrap percentiles (2.5%, 50%, 97.5%; 100 calibration resamples, seed 42): `[0.0005568324704654515, 0.0005568324704654515, 0.0008002998074516654]`.
+XGB confusion matrix `[[TN, FP], [FN, TP]]`: `[[42640, 8], [14, 60]]`.
+Under the same restored 1/10 costs, the reviewed commit's operating point cost `173` with precision/recall/F1 `0.500000/0.851351/0.630000` and review rate `0.00294930`. The corrected operating point costs `148`. These comparisons use the same new models and holdout, not historical models.
+Calibration-only bootstrap threshold percentiles (2.5%, 50%, 97.5%; 100 resamples, seed 42): `[0.0005568324704654515, 0.3197334110736847, 0.6889373660087585]`.
 
-The constant training-prevalence baseline has Brier 0.0017291284 and log-loss 0.0127442145; always approving costs 37000 on this holdout. Both models outperform these simple baselines. These are reference results, not production acceptance or proof of fairness, robustness, temporal generalization or certified calibration. ECE uses ten equal-width bins and can hide rare-event miscalibration.
+RF retains threshold 0.0016451652802712843 even under the restored costs: it is independently confirmed as the calibration minimizer. XGB changes from 0.0005568324704654515 to 0.3197334110736847. XGB holdout cost changes from 173 to 148, with fewer false positives and lower recall. This observed outcome was not used to tune thresholds. RF cost is 135. Always approving costs 740 on this holdout.
 
-### Threshold changes and uncertainty
+Both bootstrap intervals are wide because calibration contains only 74 fraud cases. These are empirical reference thresholds, not stable production optima. Holdout ROC-AUC, average precision, Brier, log-loss and ECE are numerically unchanged from the reviewed commit because models and probabilities did not change. Full per-policy decision metrics and cost comparisons are embedded in metadata. No equivalence to historical models or certified operational quality is claimed.
 
-RF min-cost threshold changes from 0.0534831589433206 to 0.0016451652802712843; XGB changes from 0.22812701761722565 to 0.0005568324704654515. New calibration and cost-sensitive model fits explain different operating points; legacy training data/splits cannot be verified, so the shift cannot be attributed solely to the library update. The independent selector matches the training selector exactly. RF bootstrap variability is substantial: only 74 calibration positives are available. Thresholds are empirical choices, not stable production optima.
+## Policy compatibility
 
-At the unchanged balanced presets RF precision/recall is 0.9643/0.7297 and XGB 0.9077/0.7973. Min-cost improves recall to 0.8514 while lowering precision to 0.7159/0.5000. These tradeoffs follow the declared cost objective; F1 is not the threshold-selection objective. Full per-policy and calibration comparisons are embedded in `metadata.json`. No historical performance parity is claimed.
+The public `decision_contract`, `risk_bands`, and reference-scope `metrics_boundary` are restored with the exact semantics shipped on the baseline main. `thresholds.json` retains detailed calibration/holdout metrics and restores policy-derived cost/threshold compatibility aliases. `LocalPredictor.thresholds()` now reads the validated bundle's effective merged thresholds, matching API metadata. Regression coverage verifies all four policies for both real models, sidebar defaults, costs, probability/label consistency and `GET /v1/policies` metadata. No API/worker interfaces, risk-band cutoffs or decision semantics change.
 
 ## Regression and security evidence
 
@@ -78,11 +83,11 @@ RF/XGB prefit calibration and MLflow 3.17.2 native/pyfunc logging, loading and r
 
 | File | SHA-256 |
 |---|---|
-| metadata.json | `277e35bc7d027bd4e24f49d0bf6c54285723f6efec10c8acc5d3c4deb57461f9` |
-| policy.json | `42db759331f2cedf1d15392777d1a2db28ae3496720ffc1f789fcc371fddc7c6` |
+| metadata.json | `573a0077b7d8f5132eaa2eb2bb71213b6b39059ea019c1447ab5616bc08a02fd` |
+| policy.json | `c670912b8848b905c4b3f8ce4ecd9d046247866ff29a8483713d8b555ca3d0ef` |
 | rf_calibrated.joblib | `afa69fe77797cf1d2b9e58ea4a9fbe5a1528ef81a72becd62707b65606dda1a1` |
 | rf_pipe.joblib | `687d0920e8aab5cfe63aea74c072c535cf164634837d81d4d0745177af25d521` |
-| thresholds.json | `01d27c4a7a2db78c48c0eab4648e684ea19137ae930a7d21ea9a38ce058c713e` |
+| thresholds.json | `48dfecebb6c9e07cbe0d64b5d3e3c34d94b501edaf424ac5537e1ba23b16574e` |
 | xgb_calibrated.joblib | `43dd190200f64958e6e988e758f2a2355d72762b0be79d898362f9569efd7b69` |
 | xgb_pipe.joblib | `786e72c36cb6ff99825509ce1f4530210706844662c344eac69b8d57aa1f38f4` |
 
@@ -94,7 +99,7 @@ Docker context canaries, test/API/UI image builds and inspection, Compose readin
 
 Actual browser UAT remains NOT_RUN: all five pages at desktop/narrow widths, CSV errors, RF/XGB API-backed inference with fallbacks disabled, policy/manual thresholds and persisted results. Streamlit component tests are separate evidence and do not establish browser usability.
 
-## Final local verification (2026-11-03)
+## Original migration local verification (2026-11-03; before policy correction)
 
 - Fresh Python candidate installation and `pip check`: PASS. Final editable-project installation used no dependency changes.
 - Blocking installed-environment audit with an empty exception policy: PASS, no known vulnerabilities. The prior raw no-exception audit covered 142 third-party/bootstrap packages with zero skipped packages.
@@ -104,3 +109,11 @@ Actual browser UAT remains NOT_RUN: all five pages at desktop/narrow widths, CSV
 - Explicit Docker build-input inventory: PASS (81 authorized files). Context/actual image filtering, container execution, Redis integration and browser acceptance remain NOT_RUN as specified above.
 
 The migration commit is a local review candidate. No GitHub alert resolution, main-branch remediation, release, deployment or production-quality equivalence is claimed.
+
+## Policy correction local verification
+
+- Full suite after the PR #92 correction: **128 passed, 6 warnings, 80.97% coverage**, above the unchanged 75% gate.
+- Ruff lint/format, `git diff --check`, real-model API/worker persistence, artifact fail-closed/integrity tests and no-exception security audit: PASS.
+- New Local/API regression verifies effective costs, all four RF/XGB policy thresholds, legacy UI aliases/sidebar defaults, probabilities/labels and the exact public decision-contract, risk-band and reference-boundary semantics.
+- Four model binaries, golden input rows and golden probability values match reviewed commit `0277e2d` exactly. Only policy-related JSON/hash witnesses and the local threshold accessor change behavior.
+- Explicit Docker allowlist is unchanged. Actual Docker/image/Compose/Redis and browser acceptance remain NOT_RUN locally; final-commit CI and manual browser gates still apply. No push or workflow dispatch is included in this local correction.

@@ -233,7 +233,7 @@ Example response shape:
   "risk_band": "low",
   "reason_codes": ["score_below_policy_threshold", "risk_band_low"],
   "policy": "min_cost",
-  "policy_version": "fraud-risk-ops-v0.1.0-sklearn1.5.2",
+  "policy_version": "fraud-risk-ops-v0.1.0-sklearn1.5.2-policy1-10",
   "input_hash": "...",
   "latency_ms": 12,
   "request_id": "pred_..."
