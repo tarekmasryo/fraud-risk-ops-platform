@@ -5,3 +5,5 @@
 *.md text eol=lf
 *.toml text eol=lf
 *.txt text eol=lf
+# These JSON bytes are covered by the trusted artifact SHA-256 manifest.
+artifacts/*.json text eol=lf
