@@ -44,7 +44,8 @@ class ArtifactCheckoutTest(unittest.TestCase):
 
             for name, digest in expected.items():
                 with self.subTest(artifact=name):
-                    actual = hashlib.sha256((checkout / "artifacts" / name).read_bytes()).hexdigest()
+                    artifact_bytes = (checkout / "artifacts" / name).read_bytes()
+                    actual = hashlib.sha256(artifact_bytes).hexdigest()
                     self.assertEqual(actual, digest, f"Git checkout changed {name}")
 
 
