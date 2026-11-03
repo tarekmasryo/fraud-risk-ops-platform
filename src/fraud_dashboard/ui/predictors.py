@@ -26,6 +26,7 @@ from fraud_dashboard.core.config import get_settings
 from fraud_dashboard.core.predict import predict_proba
 from fraud_dashboard.ui.api_client import (
     ApiConfig,
+    BackendUnavailableError,
     fetch_metadata,
     get_api_config,
     ping_ok,
@@ -64,6 +65,8 @@ def _local_bundle() -> dict[str, Any]:
 
 
 class LocalPredictor:
+    last_results: list[dict[str, Any]] | None = None
+
     def __init__(self) -> None:
         self._bundle = _local_bundle()
 
@@ -101,6 +104,7 @@ class ApiPredictor:
     def __init__(self, cfg: ApiConfig) -> None:
         self.cfg = cfg
         self._meta: dict[str, Any] | None = None
+        self.last_results: list[dict[str, Any]] | None = None
 
     def _metadata(self) -> dict[str, Any]:
         if self._meta is None:
@@ -137,11 +141,13 @@ class ApiPredictor:
         threshold: float | None = None,
         policy: str | None = None,
     ) -> tuple[np.ndarray, float]:
+        self.last_results = None
         feats = list(df_features.columns)
         records = df_features[feats].to_dict(orient="records")
         chunk_size = self._max_batch_records()
         t0 = time.perf_counter()
         probs: list[float] = []
+        results: list[dict[str, Any]] = []
         for start in range(0, len(records), chunk_size):
             chunk = records[start : start + chunk_size]
             out = predict_batch(
@@ -151,12 +157,15 @@ class ApiPredictor:
                 threshold=threshold if policy is None else None,
                 policy=policy,
             )
-            probs.extend(float(r["proba_fraud"]) for r in out.get("results", []))
+            chunk_results = out.get("results", [])
+            probs.extend(float(r["proba_fraud"]) for r in chunk_results)
+            results.extend(dict(row) for row in chunk_results)
         dt = time.perf_counter() - t0
         if len(probs) != len(records):
             raise RuntimeError(
                 f"API returned {len(probs)} predictions for {len(records)} input records."
             )
+        self.last_results = results
         return np.asarray(probs, dtype=float), float(dt)
 
 
@@ -189,7 +198,7 @@ def resolve_predictor(
                     LocalPredictor(),
                     "API not reachable → fell back to local artifacts (local fallback enabled).",
                 )
-            raise RuntimeError(
+            raise BackendUnavailableError(
                 "API mode selected but backend is not reachable and ALLOW_LOCAL_FALLBACK=false."
             )
         return ApiPredictor(api_cfg), "Using FastAPI backend."
@@ -202,7 +211,20 @@ def resolve_predictor(
             LocalPredictor(),
             "Auto: API not reachable → using local artifacts (local fallback enabled).",
         )
-    raise RuntimeError("Auto mode cannot reach API and ALLOW_LOCAL_FALLBACK=false.")
+    raise BackendUnavailableError("Auto mode cannot reach API and ALLOW_LOCAL_FALLBACK=false.")
+
+
+def render_backend_unavailable() -> None:
+    """End this run deliberately; never present an earlier prediction as current."""
+    st.session_state.pop("last_run", None)
+    st.error("Prediction API unavailable. No current prediction results are available.")
+    st.info(
+        "Restore the configured API service, then select Retry API connection. "
+        "No local fallback has been activated by this error."
+    )
+    if st.button("Retry API connection", key="retry_prediction_api"):
+        st.rerun()
+    st.stop()
 
 
 def ui_backend_selector() -> tuple[Predictor, dict[str, Any]]:

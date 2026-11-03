@@ -38,6 +38,7 @@ def test_api_predictor_chunks_large_batches_and_forwards_policy(monkeypatch) -> 
     assert {call["policy"] for call in calls} == {"balanced"}
     assert {call["threshold"] for call in calls} == {None}
     assert {call["model"] for call in calls} == {"rf"}
+    assert predictor.last_results == [{"proba_fraud": 0.25}] * 5
 
 
 def test_api_predictor_forwards_manual_threshold(monkeypatch) -> None:
@@ -264,3 +265,125 @@ def test_sidebar_never_exposes_server_credentials_or_lets_users_change_api_origi
     assert calls[-1]["api_key"] == "manual-key-for-local-review"
     assert calls[-1]["bearer_token"] is None
     assert all(kwargs["value"] == "" for _, kwargs in inputs)
+
+
+def test_api_details_are_cleared_after_partial_batch_failure(monkeypatch):
+    import pytest
+
+    from fraud_dashboard.ui.api_client import BackendUnavailableError
+
+    monkeypatch.setattr(
+        predictors, "fetch_metadata", lambda cfg: {"limits": {"max_batch_records": 1}}
+    )
+    calls = []
+
+    def predict(**kwargs):
+        calls.append(kwargs)
+        if len(calls) == 3:
+            raise BackendUnavailableError("Disconnected mid-batch")
+        return {
+            "results": [
+                {"proba_fraud": 0.2, "label": 0, "decision": "approve", "policy_version": "v1"}
+            ]
+        }
+
+    monkeypatch.setattr(predictors, "predict_batch", predict)
+    p = ApiPredictor(ApiConfig("http://api:8000"))
+    p.predict_proba_batch(pd.DataFrame({"Amount": [1]}), model_key="rf")
+    assert p.last_results[0]["decision"] == "approve"
+    with pytest.raises(BackendUnavailableError):
+        p.predict_proba_batch(pd.DataFrame({"Amount": [1, 2]}), model_key="rf")
+    assert p.last_results is None
+
+
+def test_only_expected_transport_and_unavailable_responses_get_outage_state(monkeypatch):
+    import httpx
+    import pytest
+
+    from fraud_dashboard.ui import api_client
+    from fraud_dashboard.ui.api_client import ApiError, BackendUnavailableError
+
+    cfg = ApiConfig("http://api:8000")
+    for status in [401, 403, 422, 500, 502, 503, 504]:
+        transport = httpx.MockTransport(
+            lambda req, status=status: httpx.Response(status, json={"detail": "test"})
+        )
+        monkeypatch.setattr(
+            api_client,
+            "_client",
+            lambda cfg, transport=transport: httpx.Client(
+                transport=transport, base_url=cfg.base_url
+            ),
+        )
+        expected = BackendUnavailableError if status in {502, 503, 504} else ApiError
+        with pytest.raises(expected) as error:
+            api_client.fetch_metadata(cfg)
+        if status not in {502, 503, 504}:
+            assert not isinstance(error.value, BackendUnavailableError)
+            with pytest.raises(ApiError):
+                api_client.ping_ok(cfg)
+
+    def disconnect(req):
+        raise httpx.ConnectError("Disconnected", request=req)
+
+    monkeypatch.setattr(
+        api_client,
+        "_client",
+        lambda cfg: httpx.Client(transport=httpx.MockTransport(disconnect), base_url=cfg.base_url),
+    )
+    assert api_client.ping_ok(cfg) is False
+    with pytest.raises(BackendUnavailableError):
+        api_client.fetch_metadata(cfg)
+
+
+def test_results_show_returned_decisions_and_do_not_infer_local_decisions():
+    import numpy as np
+
+    from fraud_dashboard.ui.pages import prediction_results_frame
+
+    frame = pd.DataFrame(
+        {"Amount": [1, 2], "decision": ["untrusted input", "untrusted input"]}, index=[5, 8]
+    )
+    probs = np.array([0.1, 0.9])
+    actual = [
+        {
+            "label": 0,
+            "decision": "approve",
+            "policy": "strict",
+            "policy_version": "v7",
+            "threshold": 0.9,
+        },
+        {
+            "label": 1,
+            "decision": "review",
+            "policy": "strict",
+            "policy_version": "v7",
+            "threshold": 0.9,
+        },
+    ]
+    results = prediction_results_frame(frame, probs, threshold=0.9, policy="strict", details=actual)
+    assert results.index.tolist() == [5, 8]
+    assert results.columns[:3].tolist() == ["fraud_proba", "fraud_pred", "decision"]
+    assert results["decision"].tolist() == ["approve", "review"]
+    assert results["policy_version"].tolist() == ["v7", "v7"]
+    assert results["fraud_pred"].tolist() == [0, 1]
+    local = prediction_results_frame(
+        frame, probs, threshold=0.42, policy=None, details=None, local_policy_version="packaged-v2"
+    )
+    assert "decision" not in local
+    assert local["policy"].tolist() == ["manual_override"] * 2
+    assert local["policy_version"].tolist() == ["packaged-v2"] * 2
+    assert local["fraud_pred"].tolist() == [0, 1]
+
+
+def test_unknown_api_errors_are_not_masked_by_backend_selection(monkeypatch):
+    import pytest
+
+    from fraud_dashboard.ui.api_client import ApiError
+
+    def unauthorized(cfg):
+        raise ApiError("API error 401")
+
+    monkeypatch.setattr(predictors, "ping_ok", unauthorized)
+    with pytest.raises(ApiError, match="401"):
+        predictors.resolve_predictor("Auto", "http://api:8000")
