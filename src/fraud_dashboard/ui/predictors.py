@@ -24,7 +24,13 @@ except ModuleNotFoundError:  # pragma: no cover - keeps non-UI unit tests lightw
 from fraud_dashboard.core.artifacts import load_bundle
 from fraud_dashboard.core.config import get_settings
 from fraud_dashboard.core.predict import predict_proba
-from fraud_dashboard.ui.api_client import ApiConfig, fetch_metadata, get_api_config, ping_ok, predict_batch
+from fraud_dashboard.ui.api_client import (
+    ApiConfig,
+    fetch_metadata,
+    get_api_config,
+    ping_ok,
+    predict_batch,
+)
 
 
 @dataclass(frozen=True)
@@ -214,7 +220,7 @@ def ui_backend_selector() -> tuple[Predictor, dict[str, Any]]:
             value="",
             type="password",
             key="manual_api_key_v2",
-            help="Optional per-session credential; server credentials are never displayed.",
+            help="Optional session credential. Server credentials are never displayed.",
         )
         bearer_input = st.text_input(
             "Bearer token",
@@ -228,8 +234,12 @@ def ui_backend_selector() -> tuple[Predictor, dict[str, Any]]:
     bearer_input = bearer_input.strip()
     manual_override = bool(api_key_input or bearer_input)
     # Do not mix per-session overrides with other server-provided credentials.
-    effective_api_key = (api_key_input or None) if manual_override else server_config.api_key
-    effective_bearer = (bearer_input or None) if manual_override else server_config.bearer_token
+    if manual_override:
+        effective_api_key = api_key_input or None
+        effective_bearer = bearer_input or None
+    else:
+        effective_api_key = server_config.api_key
+        effective_bearer = server_config.bearer_token
 
     predictor, msg = resolve_predictor(
         mode,
