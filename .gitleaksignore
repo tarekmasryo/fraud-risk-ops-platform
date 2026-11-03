@@ -1,0 +1,5 @@
+# Single reviewed historical false positive from commit badf4bd4 (2025-10-06).
+# Gitleaks generic-api-key matched Streamlit model-key/threshold expression
+# across a diff hunk; no credential assignment or real secret is present.
+# Scope to this exact fingerprint; never ignore the whole file/rule.
+badf4bd4c5390dff6bcfc11ee5c6e444d01bfd8b:streamlit_app.py:generic-api-key:293

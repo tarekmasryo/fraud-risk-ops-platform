@@ -34,3 +34,23 @@ The numeric-model graph checks remain regression coverage, not an exception poli
 The repository includes environment-controlled authentication for local technical review. Do not use the default credentials or API key in any exposed environment. When `REQUIRE_AUTH=true`, the application validates that local placeholder secrets were replaced. The Streamlit console can forward `X-API-Key` or bearer credentials to the API for protected local runs.
 
 The shipped artifacts and synthetic workflows are included to make the platform runnable and inspectable. Real payment-risk decisions require organization-specific data validation, governance approval, monitoring, and review procedures around the deployed environment.
+
+## Streamlit credential routing (reference scope)
+
+The Streamlit API destination is configured by the server (`FRAUD_API_URL`,
+or legacy `API_BASE_URL`) and cannot be changed from the browser. Malformed
+origins, embedded URL credentials and path/query/fragment suffixes are rejected.
+Server-side `FRAUD_API_KEY` and `FRAUD_BEARER_TOKEN` values must never be
+prefilled into browser widgets. Optional user-provided session credentials
+replace, rather than mix with, the server-configured credential pair.
+
+This Streamlit console does **not** authenticate viewers. In particular, an
+internet-exposed UI with a backend API key would allow its visitors to invoke
+the API using that server-side authority. Public deployment therefore
+requires separate frontend authentication/authorization, HTTPS for remote
+connections, least-privileged API credentials, and a deployment review.
+Default Docker Compose settings are intended only for trusted local access.
+
+CI performs a Gitleaks scan of reachable Git history, redacting findings from
+the public logs. A negative scan does not establish absence of all secrets,
+including those in binary artifacts or unreachable historical objects.

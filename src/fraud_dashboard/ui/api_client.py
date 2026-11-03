@@ -4,6 +4,7 @@ import os
 import time
 from dataclasses import dataclass
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -20,6 +21,34 @@ class ApiError(RuntimeError):
     """Raised when the FastAPI backend cannot be reached or returns an error."""
 
 
+def configured_api_url() -> str:
+    """Use only a server-controlled API origin; never accept a browser-selected target.
+
+    Credentials must not be forwarded to URL userinfo, arbitrary paths, queries or
+    fragments. Local HTTP and Docker service DNS remain supported for reference use.
+    """
+    raw = os.getenv("FRAUD_API_URL") or os.getenv("API_BASE_URL") or "http://127.0.0.1:8000"
+    try:
+        url = urlsplit(raw)
+        valid = (
+            bool(raw)
+            and not any(ord(ch) < 33 or ord(ch) == 127 for ch in raw)
+            and url.scheme in {"http", "https"}
+            and bool(url.hostname)
+            and url.username is None
+            and url.password is None
+            and url.path in {"", "/"}
+            and not url.query
+            and not url.fragment
+        )
+        _ = url.port  # Reject malformed port numbers.
+    except ValueError as exc:
+        raise ValueError("Invalid server API URL configuration") from exc
+    if not valid:
+        raise ValueError("Invalid server API URL configuration")
+    return raw.rstrip("/")
+
+
 def get_api_config() -> ApiConfig:
     """Resolve the FastAPI base URL and optional auth from environment variables.
 
@@ -29,11 +58,8 @@ def get_api_config() -> ApiConfig:
     - Optional protected-mode bearer token: FRAUD_BEARER_TOKEN
     """
 
-    base_url = (
-        os.getenv("FRAUD_API_URL") or os.getenv("API_BASE_URL") or "http://127.0.0.1:8000"
-    ).rstrip("/")
     return ApiConfig(
-        base_url=base_url,
+        base_url=configured_api_url(),
         api_key=os.getenv("FRAUD_API_KEY") or None,
         bearer_token=os.getenv("FRAUD_BEARER_TOKEN") or None,
     )

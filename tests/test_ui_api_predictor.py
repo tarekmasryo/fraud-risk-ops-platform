@@ -154,3 +154,113 @@ def test_local_and_api_share_effective_policies_and_public_contract(monkeypatch,
     finally:
         api._bundle.cache_clear()
         api._policy.cache_clear()
+
+
+def test_server_managed_api_origin_rejects_unsafe_urls(monkeypatch) -> None:
+    import pytest
+
+    from fraud_dashboard.ui.api_client import configured_api_url
+
+    invalid = [
+        "file:///etc/passwd",
+        "http://user:pass@api:8000",
+        "https://api.example.test/private",
+        "http://api:8000/?token=value",
+        "http://api:8000/#fragment",
+        "http://api:invalid",
+        "http://api:8000\\nHeader: value",
+    ]
+    for candidate in invalid:
+        monkeypatch.setenv("FRAUD_API_URL", candidate)
+        with pytest.raises(ValueError, match="Invalid server API URL configuration"):
+            configured_api_url()
+
+
+def test_server_managed_api_origin_supports_local_and_https(monkeypatch) -> None:
+    from fraud_dashboard.ui.api_client import configured_api_url, get_api_config
+
+    for address in [
+        "http://127.0.0.1:8000",
+        "http://api:8000/",
+        "https://api.example.test",
+    ]:
+        monkeypatch.setenv("FRAUD_API_URL", address)
+        assert configured_api_url() == address.rstrip("/")
+        assert get_api_config().base_url == address.rstrip("/")
+    monkeypatch.delenv("FRAUD_API_URL", raising=False)
+    monkeypatch.setenv("API_BASE_URL", "http://legacy-api:8000")
+    assert configured_api_url() == "http://legacy-api:8000"
+
+
+def test_sidebar_never_exposes_server_credentials_or_lets_users_change_api_origin(
+    monkeypatch,
+) -> None:
+    from contextlib import nullcontext
+    from types import SimpleNamespace
+
+    monkeypatch.setenv("FRAUD_API_URL", "http://api:8000")
+    monkeypatch.setenv("FRAUD_API_KEY", "server-key-not-for-browser")
+    monkeypatch.setenv("FRAUD_BEARER_TOKEN", "server-token-not-for-browser")
+
+    inputs: list[tuple[str, dict]] = []
+    calls: list[dict] = []
+    typed: dict[str, str] = {}
+
+    class Sidebar:
+        def header(self, _label):
+            pass
+
+        def radio(self, _label, _choices, **_kwargs):
+            return "API"
+
+        def expander(self, _label, **_kwargs):
+            return nullcontext()
+
+        def caption(self, _caption):
+            pass
+
+        def success(self, _message):
+            pass
+
+        def info(self, _message):
+            pass
+
+        def text_input(self, *_args, **_kwargs):
+            raise AssertionError("Browser must not select API destination")
+
+    def text_input(label, **kwargs):
+        inputs.append((label, kwargs))
+        return typed.get(label, "")
+
+    def resolve(mode, api_url, *, api_key, bearer_token):
+        calls.append(
+            {
+                "mode": mode,
+                "url": api_url,
+                "api_key": api_key,
+                "bearer_token": bearer_token,
+            }
+        )
+        predictor = SimpleNamespace(info=lambda: SimpleNamespace(kind="api"))
+        return predictor, "Using trusted configured backend"
+
+    monkeypatch.setattr(predictors, "st", SimpleNamespace(sidebar=Sidebar(), text_input=text_input))
+    monkeypatch.setattr(predictors, "resolve_predictor", resolve)
+
+    _predictor, meta = predictors.ui_backend_selector()
+    assert meta["api_url"] == "http://api:8000"
+    assert meta["auth_configured"] is True
+    assert len(inputs) == 2
+    assert {label for label, _settings in inputs} == {"API key", "Bearer token"}
+    assert all(kwargs["value"] == "" and kwargs["type"] == "password" for _, kwargs in inputs)
+    assert calls[-1]["api_key"] == "server-key-not-for-browser"
+    assert calls[-1]["bearer_token"] == "server-token-not-for-browser"
+
+    # A manual key replaces, rather than accidentally combines with, env credentials.
+    typed["API key"] = "manual-key-for-local-review"
+    inputs.clear()
+    predictors.ui_backend_selector()
+    assert calls[-1]["url"] == "http://api:8000"
+    assert calls[-1]["api_key"] == "manual-key-for-local-review"
+    assert calls[-1]["bearer_token"] is None
+    assert all(kwargs["value"] == "" for _, kwargs in inputs)

@@ -317,6 +317,17 @@ GRAFANA_ADMIN_PASSWORD=<strong-local-grafana-password>
 
 The app refuses insecure local secrets when `REQUIRE_AUTH=true`. It also refuses `APP_ENV=prod` unless auth is enabled, and rejects wildcard CORS in prod-like environments. Scoring, operational endpoints, and `/metadata` require authentication in protected mode. The Streamlit console can also forward protected-mode credentials through `FRAUD_API_KEY`, `FRAUD_BEARER_TOKEN`, or the sidebar auth fields.
 
+**Streamlit security boundary:** The API endpoint is configured by the server
+(`FRAUD_API_URL`, or legacy `API_BASE_URL`), not by a user-editable browser
+control. API secrets from the server environment are not inserted into widget
+values; manual credentials entered in the sidebar override both server-provided
+credential fields. The Streamlit console does not independently authenticate
+viewers: do **not** expose it publicly with privileged backend keys without an
+upstream viewer authentication layer. Use HTTPS for external API traffic. The
+local Docker Compose setup remains a trusted-machine demo only. CI also
+checks reachable Git history for secret patterns using redacted Gitleaks
+output; this does not replace credential rotation if exposure is suspected.
+
 ---
 
 ## 🧠 Training and metric boundary
