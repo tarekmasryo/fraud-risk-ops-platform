@@ -98,4 +98,4 @@ jobs:
             --mount "type=bind,src=$PWD,dst=/repo,readonly" \
             --workdir /repo \
             ghcr.io/gitleaks/gitleaks@sha256:b109bc5f8f76a38196a3e413704fc5b9e3c32360bce4e4b603bd6f45b3721dbb \
-            git --no-banner --redact --log-opts="--all" /repo
+            git --no-banner --redact --verbose --log-opts="--all" /repo
