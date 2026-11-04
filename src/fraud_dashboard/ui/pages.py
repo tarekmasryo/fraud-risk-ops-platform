@@ -168,6 +168,7 @@ def prediction_export_frame(results: pd.DataFrame, original: pd.DataFrame) -> pd
         used.add(candidate)
     return pd.concat([results, original.rename(columns=renames)], axis=1)
 
+
 class DataOverviewPage:
     def __init__(self, *, expected_features: list[str]) -> None:
         self.expected_features = expected_features

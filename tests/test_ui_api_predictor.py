@@ -388,6 +388,7 @@ def test_unknown_api_errors_are_not_masked_by_backend_selection(monkeypatch):
     with pytest.raises(ApiError, match="401"):
         predictors.resolve_predictor("Auto", "http://api:8000")
 
+
 def test_prediction_csv_export_preserves_colliding_source_columns() -> None:
     import io
 
@@ -412,8 +413,20 @@ def test_prediction_csv_export_preserves_colliding_source_columns() -> None:
     )
     probabilities = np.array([0.1, 0.9])
     details = [
-        {"label": 0, "decision": "approve", "policy": "strict", "policy_version": "v7", "threshold": 0.9},
-        {"label": 1, "decision": "review", "policy": "strict", "policy_version": "v7", "threshold": 0.9},
+        {
+            "label": 0,
+            "decision": "approve",
+            "policy": "strict",
+            "policy_version": "v7",
+            "threshold": 0.9,
+        },
+        {
+            "label": 1,
+            "decision": "review",
+            "policy": "strict",
+            "policy_version": "v7",
+            "threshold": 0.9,
+        },
     ]
     results = prediction_results_frame(
         source, probabilities, threshold=0.9, policy="strict", details=details
