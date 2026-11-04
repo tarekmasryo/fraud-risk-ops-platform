@@ -143,6 +143,31 @@ def prediction_results_frame(
     return result
 
 
+def prediction_export_frame(results: pd.DataFrame, original: pd.DataFrame) -> pd.DataFrame:
+    """Preserve all input columns when their names overlap with prediction results."""
+    if (
+        len(results) != len(original)
+        or not results.index.equals(original.index)
+        or not results.columns.is_unique
+        or not original.columns.is_unique
+    ):
+        raise ValueError("Prediction results and input rows/columns must align for export.")
+
+    used = set(results.columns) | set(original.columns)
+    renames: dict[str, str] = {}
+    for name in original.columns:
+        if name not in results.columns:
+            continue
+        stem = f"input_{name}"
+        candidate = stem
+        suffix = 2
+        while candidate in used:
+            candidate = f"{stem}_{suffix}"
+            suffix += 1
+        renames[name] = candidate
+        used.add(candidate)
+    return pd.concat([results, original.rename(columns=renames)], axis=1)
+
 class DataOverviewPage:
     def __init__(self, *, expected_features: list[str]) -> None:
         self.expected_features = expected_features
@@ -245,21 +270,7 @@ class PredictionEnginePage:
             local_policy_version=version if isinstance(version, str) else None,
         )
         preds = results["fraud_pred"].to_numpy()
-        raw = df_pred.drop(columns=results.columns, errors="ignore").rename(
-            columns={
-                key: f"input_{key}"
-                for key in (
-                    "decision",
-                    "policy",
-                    "policy_version",
-                    "threshold",
-                    "review_required",
-                    "risk_band",
-                    "request_id",
-                )
-            }
-        )
-        out = pd.concat([results, raw], axis=1)
+        out = prediction_export_frame(results, df_pred)
         y_true = df_pred["Class"].values if "Class" in df_pred.columns else None
 
         policy_label = policy_name or "manual_override"

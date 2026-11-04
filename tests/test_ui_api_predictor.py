@@ -387,3 +387,67 @@ def test_unknown_api_errors_are_not_masked_by_backend_selection(monkeypatch):
     monkeypatch.setattr(predictors, "ping_ok", unauthorized)
     with pytest.raises(ApiError, match="401"):
         predictors.resolve_predictor("Auto", "http://api:8000")
+
+def test_prediction_csv_export_preserves_colliding_source_columns() -> None:
+    import io
+
+    import numpy as np
+
+    from fraud_dashboard.ui.pages import prediction_export_frame, prediction_results_frame
+
+    source = pd.DataFrame(
+        {
+            "Time": [1, 2],
+            "Amount": [10, 20],
+            "Class": [0, 1],
+            "decision": ["source-a", "source-b"],
+            "policy_version": ["user-v1", "user-v2"],
+            "threshold": [77, 88],
+            "fraud_proba": ["source-proba-a", "source-proba-b"],
+            "fraud_pred": [7, 8],
+            "input_decision": ["existing-a", "existing-b"],
+            "input_decision_2": ["existing2-a", "existing2-b"],
+        },
+        index=[5, 8],
+    )
+    probabilities = np.array([0.1, 0.9])
+    details = [
+        {"label": 0, "decision": "approve", "policy": "strict", "policy_version": "v7", "threshold": 0.9},
+        {"label": 1, "decision": "review", "policy": "strict", "policy_version": "v7", "threshold": 0.9},
+    ]
+    results = prediction_results_frame(
+        source, probabilities, threshold=0.9, policy="strict", details=details
+    )
+    exported = prediction_export_frame(results, source)
+    assert exported.index.equals(source.index)
+    assert exported.columns.is_unique
+    assert len(exported.columns) == len(results.columns) + len(source.columns)
+    assert exported.columns[:3].tolist() == ["fraud_proba", "fraud_pred", "decision"]
+    assert exported["decision"].tolist() == ["approve", "review"]
+    assert exported["input_decision_3"].tolist() == ["source-a", "source-b"]
+    assert exported["input_decision"].tolist() == ["existing-a", "existing-b"]
+    assert exported["input_decision_2"].tolist() == ["existing2-a", "existing2-b"]
+    assert exported["input_policy_version"].tolist() == ["user-v1", "user-v2"]
+    assert exported["input_threshold"].tolist() == [77, 88]
+    assert exported["input_fraud_proba"].tolist() == ["source-proba-a", "source-proba-b"]
+    assert exported["input_fraud_pred"].tolist() == [7, 8]
+    assert exported["Amount"].tolist() == source["Amount"].tolist()
+
+    downloaded = pd.read_csv(io.StringIO(exported.to_csv(index=False)))
+    assert downloaded.columns.tolist() == exported.columns.tolist()
+    assert downloaded["input_decision_3"].tolist() == ["source-a", "source-b"]
+    assert downloaded["decision"].tolist() == ["approve", "review"]
+
+
+def test_prediction_csv_export_rejects_misaligned_results() -> None:
+    import pytest
+
+    from fraud_dashboard.ui.pages import prediction_export_frame
+
+    original = pd.DataFrame({"Amount": [10, 20]}, index=[5, 8])
+    reordered = pd.DataFrame({"fraud_proba": [0.1, 0.9]}, index=[8, 5])
+    with pytest.raises(ValueError, match="align for export"):
+        prediction_export_frame(reordered, original)
+    duplicates = pd.DataFrame([[1, 2]], columns=["decision", "decision"])
+    with pytest.raises(ValueError, match="align for export"):
+        prediction_export_frame(pd.DataFrame({"fraud_proba": [0.1]}), duplicates)
