@@ -20,7 +20,9 @@ from sklearn.metrics import (
 )
 
 from fraud_dashboard.core.artifacts import load_models
+from fraud_dashboard.ui.api_client import BackendUnavailableError
 from fraud_dashboard.ui.data_io import validate_ui_dataframe
+from fraud_dashboard.ui.predictors import render_backend_unavailable
 from fraud_dashboard.ui.theme import PRIMARY, style_fig
 
 
@@ -104,6 +106,69 @@ class RunState:
     elapsed_s: float
 
 
+def prediction_results_frame(
+    df: pd.DataFrame,
+    probs: np.ndarray,
+    *,
+    threshold: float,
+    policy: str | None,
+    details: list[dict[str, Any]] | None,
+    local_policy_version: str | None = None,
+) -> pd.DataFrame:
+    """Keep backend decisions as supplied, separate from transaction input fields."""
+    result = pd.DataFrame(
+        {"fraud_proba": probs, "fraud_pred": (probs >= threshold).astype(int)}, index=df.index
+    )
+    if details is not None:
+        if len(details) != len(df):
+            raise RuntimeError("API result details do not match the input row count.")
+        returned = pd.DataFrame(details, index=df.index)
+        if "label" in returned:
+            result["fraud_pred"] = returned["label"]
+        for key in (
+            "decision",
+            "policy",
+            "policy_version",
+            "threshold",
+            "review_required",
+            "risk_band",
+            "request_id",
+        ):
+            if key in returned:
+                result[key] = returned[key]
+    else:
+        result["policy"] = policy or "manual_override"
+        result["policy_version"] = local_policy_version or "Not supplied"
+        result["threshold"] = threshold
+    return result
+
+
+def prediction_export_frame(results: pd.DataFrame, original: pd.DataFrame) -> pd.DataFrame:
+    """Preserve all input columns when their names overlap with prediction results."""
+    if (
+        len(results) != len(original)
+        or not results.index.equals(original.index)
+        or not results.columns.is_unique
+        or not original.columns.is_unique
+    ):
+        raise ValueError("Prediction results and input rows/columns must align for export.")
+
+    used = set(results.columns) | set(original.columns)
+    renames: dict[str, str] = {}
+    for name in original.columns:
+        if name not in results.columns:
+            continue
+        stem = f"input_{name}"
+        candidate = stem
+        suffix = 2
+        while candidate in used:
+            candidate = f"{stem}_{suffix}"
+            suffix += 1
+        renames[name] = candidate
+        used.add(candidate)
+    return pd.concat([results, original.rename(columns=renames)], axis=1)
+
+
 class DataOverviewPage:
     def __init__(self, *, expected_features: list[str]) -> None:
         self.expected_features = expected_features
@@ -181,22 +246,48 @@ class PredictionEnginePage:
             st.error("No usable feature columns found.")
             return
 
-        with st.spinner("Running inference..."):
-            probs, elapsed = self.predictor.predict_proba_batch(
-                X,
-                model_key=model_key,
-                threshold=thr if policy_name is None else None,
-                policy=policy_name,
-            )
+        try:
+            with st.spinner("Running inference..."):
+                probs, elapsed = self.predictor.predict_proba_batch(
+                    X,
+                    model_key=model_key,
+                    threshold=thr if policy_name is None else None,
+                    policy=policy_name,
+                )
+        except BackendUnavailableError:
+            render_backend_unavailable()
+            return
 
-        preds = (probs >= thr).astype(int)
-        out = df_pred.copy()
-        out["fraud_proba"] = probs
-        out["fraud_pred"] = preds
-        y_true = out["Class"].values if "Class" in out.columns else None
+        details = getattr(self.predictor, "last_results", None)
+        details = details if isinstance(details, list) else None
+        thresholds = self.predictor.thresholds()
+        version = thresholds.get("artifact_version") if isinstance(thresholds, dict) else None
+        results = prediction_results_frame(
+            df_pred,
+            probs,
+            threshold=thr,
+            policy=policy_name,
+            details=details,
+            local_policy_version=version if isinstance(version, str) else None,
+        )
+        preds = results["fraud_pred"].to_numpy()
+        out = prediction_export_frame(results, df_pred)
+        y_true = df_pred["Class"].values if "Class" in df_pred.columns else None
 
         policy_label = policy_name or "manual_override"
         st.caption(f"Operating point: {policy_label} · threshold={thr:.3f}")
+        st.markdown("### Prediction results")
+        st.caption(
+            "Risk score (fraud_proba) is a model probability; fraud_pred is the binary fraud "
+            "label. Operational decisions are shown only when supplied by the backend."
+        )
+        for key, label in (("policy", "Policy"), ("policy_version", "Policy version")):
+            values = results[key].dropna().astype(str).unique() if key in results else []
+            st.write(f"{label}: {', '.join(values) if len(values) else 'Not supplied'}")
+        if "decision" not in results:
+            st.info(
+                "Operational decisions were not supplied; no approve/review decision is inferred."
+            )
 
         if y_true is not None:
             prec = precision_score(y_true, preds, zero_division=0)
@@ -224,8 +315,10 @@ class PredictionEnginePage:
         )
 
         preview_all = st.checkbox("Return all rows (preview full table)", value=False)
-        preview = out if preview_all else out.head(50)
+        preview = results if preview_all else results.head(50)
         dataframe_full_width(st, preview)
+        with st.expander("Raw transaction features", expanded=False):
+            dataframe_full_width(st, df_pred if preview_all else df_pred.head(50))
         st.download_button(
             "Download predictions.csv",
             out.to_csv(index=False).encode("utf-8"),

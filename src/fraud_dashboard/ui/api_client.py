@@ -21,6 +21,10 @@ class ApiError(RuntimeError):
     """Raised when the FastAPI backend cannot be reached or returns an error."""
 
 
+class BackendUnavailableError(ApiError):
+    """An expected connection outage, timeout or unavailable upstream service."""
+
+
 def configured_api_url() -> str:
     """Use only a server-controlled API origin; never accept a browser-selected target.
 
@@ -92,9 +96,13 @@ def _request_json(
         # Attach a lightweight client-side timing too (useful for UI debugging).
         data.setdefault("client_latency_ms", (time.perf_counter() - t0) * 1000.0)
         return data
+    except (httpx.NetworkError, httpx.TimeoutException) as e:
+        raise BackendUnavailableError("The prediction API is unavailable or timed out.") from e
     except httpx.RequestError as e:
         raise ApiError(f"Cannot reach API at {cfg.base_url}: {e}") from e
     except httpx.HTTPStatusError as e:
+        if e.response.status_code in {502, 503, 504}:
+            raise BackendUnavailableError("The prediction API is temporarily unavailable.") from e
         body = e.response.text
         raise ApiError(f"API error {e.response.status_code} on {path}: {body}") from e
     except ValueError as e:
@@ -112,7 +120,7 @@ def ping_ok(cfg: ApiConfig) -> bool:
     try:
         data = ping(cfg)
         return bool(data.get("status") == "ok")
-    except ApiError:
+    except BackendUnavailableError:
         return False
 
 

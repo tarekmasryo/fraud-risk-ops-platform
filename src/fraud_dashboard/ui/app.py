@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 import streamlit as st
 
+from fraud_dashboard.ui.api_client import BackendUnavailableError
 from fraud_dashboard.ui.data_io import get_active_dataframe
 from fraud_dashboard.ui.pages import (
     DataOverviewPage,
@@ -12,7 +13,7 @@ from fraud_dashboard.ui.pages import (
     ModelMetricsPage,
     PredictionEnginePage,
 )
-from fraud_dashboard.ui.predictors import ui_backend_selector
+from fraud_dashboard.ui.predictors import render_backend_unavailable, ui_backend_selector
 from fraud_dashboard.ui.theme import init_plotly_theme, inject_css
 
 MODEL_LABELS = {
@@ -186,14 +187,17 @@ class DashboardApp:
 
     def run(self) -> None:
         self._render_header()
-
-        predictor, _backend_meta = ui_backend_selector()
-        features = predictor.schema_features()
+        st.session_state.pop("last_run", None)
+        try:
+            predictor, _backend_meta = ui_backend_selector()
+            features = predictor.schema_features()
+            cfg = self._render_sidebar(predictor)
+        except BackendUnavailableError:
+            render_backend_unavailable()
+            return
         if not features:
             # fallback: creditcard-like features
             features = ["Time", *[f"V{i}" for i in range(1, 29)], "Amount"]
-
-        cfg = self._render_sidebar(predictor)
 
         tab1, tab2, tab3, tab4, tab5 = st.tabs(
             [
