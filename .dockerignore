@@ -69,6 +69,7 @@
 !tests/__init__.py
 !tests/fixtures/reference_predictions.json
 !tests/test_api.py
+!tests/test_artifact_checkout.py
 !tests/test_artifacts.py
 !tests/test_core.py
 !tests/test_dependency_audit.py
